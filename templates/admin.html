@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Smart City Parking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .warning h2 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .warning p {
+            color: #856404;
+            line-height: 1.6;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .info-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .info-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        code {
+            background: #f8f9fa;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        
+        .button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Admin Panel</h1>
+            <p>Smart City Parking - Administrative Interface</p>
+        </header>
+        
+        <div class="warning">
+            <h2>⚠️ Frontend Not Implemented</h2>
+            <p>This is a REST API backend. The admin frontend interface is not yet implemented. You can interact with the API using:</p>
+            <ul style="margin-top: 10px; margin-left: 20px; color: #856404;">
+                <li>Postman or Insomnia for API testing</li>
+                <li>curl commands</li>
+                <li>Your custom frontend application</li>
+            </ul>
+        </div>
+        
+        <div class="info-card">
+            <h3>Admin API Endpoints</h3>
+            <p><strong>Get Pending Listings:</strong> <code>GET /api/admin/pending-listings</code></p>
+            <p><strong>Approve Listing:</strong> <code>PUT /api/admin/approve-listing/:id</code></p>
+            <p><strong>Reject Listing:</strong> <code>PUT /api/admin/reject-listing/:id</code></p>
+            <p><strong>Dashboard Stats:</strong> <code>GET /api/admin/dashboard</code></p>
+        </div>
+        
+        <div class="info-card">
+            <h3>Authentication Required</h3>
+            <p>All admin endpoints require:</p>
+            <ul style="margin-left: 20px; color: #666; margin-top: 10px;">
+                <li>Valid JWT token in Authorization header</li>
+                <li>User must have admin role</li>
+            </ul>
+            <p style="margin-top: 15px;"><strong>Header format:</strong> <code>Authorization: Bearer YOUR_JWT_TOKEN</code></p>
+        </div>
+        
+        <div class="info-card">
+            <h3>Need to Create an Admin User?</h3>
+            <p>Run the setup script in your deployment environment or use the API to create a user with admin role.</p>
+        </div>
+    </div>
+</body>
+</html>

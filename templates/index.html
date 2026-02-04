@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Parking - API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .status {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        
+        .status-text {
+            color: #155724;
+            font-weight: 600;
+        }
+        
+        .endpoints {
+            margin-top: 30px;
+        }
+        
+        .endpoints h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .endpoint-group {
+            margin-bottom: 25px;
+        }
+        
+        .endpoint-group h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        
+        .endpoint {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .method {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 0.85em;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .method.post {
+            background: #28a745;
+        }
+        
+        .method.put {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .method.delete {
+            background: #dc3545;
+        }
+        
+        .path {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            flex: 1;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+        
+        .info-box p {
+            color: #014361;
+            line-height: 1.6;
+        }
+        
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🅿️ Smart City Parking</h1>
+        <p class="subtitle">Peer-to-Peer Parking System API</p>
+        
+        <div class="status">
+            <p class="status-text">✓ API is running successfully</p>
+        </div>
+        
+        <div class="endpoints">
+            <h2>Available Endpoints</h2>
+            
+            <div class="endpoint-group">
+                <h3>Authentication</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/auth/register</span>
+                </div>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/auth/login</span>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>Parking Management</h3>
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="path">/api/parkings</span>
+                </div>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/parkings</span>
+                </div>
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="path">/api/parkings/search</span>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>Bookings</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/bookings</span>
+                </div>
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="path">/api/bookings/user</span>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>Wallet</h3>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/wallet/add-money/razorpay</span>
+                </div>
+                <div class="endpoint">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/wallet/add-money/crypto</span>
+                </div>
+            </div>
+            
+            <div class="endpoint-group">
+                <h3>System</h3>
+                <div class="endpoint">
+                    <span class="method">GET</span>
+                    <span class="path">/health</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <p><strong>Note:</strong> This is a REST API. Use tools like Postman, curl, or your frontend application to interact with these endpoints. All protected endpoints require a JWT token in the Authorization header.</p>
+        </div>
+    </div>
+</body>
+</html>
