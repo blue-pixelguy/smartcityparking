@@ -919,6 +919,26 @@ def admin_dashboard(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to fetch dashboard', 'error': str(e)}), 500
 
+# ==================== HEALTH CHECK ====================
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring"""
+    try:
+        # Check database connection
+        db.users.find_one()
+        return jsonify({
+            'status': 'healthy',
+            'message': 'API is running',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'message': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 # ==================== HOME ROUTE ====================
 
 @app.route('/')
