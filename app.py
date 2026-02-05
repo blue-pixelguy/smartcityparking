@@ -8,6 +8,9 @@ import os
 import jwt
 from functools import wraps
 import requests
+import razorpay
+import hmac
+import hashlib
 from config import Config
 from database import Database
 
@@ -17,6 +20,9 @@ CORS(app)
 
 # Initialize Database
 db = Database()
+
+# Initialize Razorpay Client
+razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
 
 # File upload configuration
 UPLOAD_FOLDER = 'static/uploads/parking'
@@ -70,6 +76,10 @@ def register():
             if field not in data:
                 return jsonify({'message': f'{field} is required'}), 400
         
+        # Validate role
+        if data['role'] not in ['host', 'driver']:
+            return jsonify({'message': 'Role must be either host or driver'}), 400
+        
         # Check if user exists
         if db.users.find_one({'email': data['email']}):
             return jsonify({'message': 'Email already registered'}), 400
@@ -83,10 +93,11 @@ def register():
             'email': data['email'],
             'password': generate_password_hash(data['password']),
             'phone': data['phone'],
-            'role': data['role'],  # 'host', 'driver', or 'admin'
+            'role': data['role'],
             'wallet_balance': 0,
+            'payment_details': data.get('payment_details', {}),  # UPI, Bank account, etc.
             'created_at': datetime.utcnow(),
-            'is_verified': False
+            'is_verified': True  # Auto-verify for now
         }
         
         result = db.users.insert_one(user)
@@ -125,6 +136,7 @@ def login():
                 'id': str(user['_id']),
                 'name': user['name'],
                 'email': user['email'],
+                'phone': user['phone'],
                 'role': user['role'],
                 'wallet_balance': user['wallet_balance']
             }
@@ -133,11 +145,55 @@ def login():
     except Exception as e:
         return jsonify({'message': 'Login failed', 'error': str(e)}), 500
 
-# ==================== WALLET ROUTES ====================
+# ==================== USER PROFILE ====================
 
-@app.route('/api/wallet/add-money/razorpay', methods=['POST'])
+@app.route('/api/user/profile', methods=['GET'])
 @token_required
-def add_money_razorpay(current_user):
+def get_profile(current_user):
+    try:
+        return jsonify({
+            'id': str(current_user['_id']),
+            'name': current_user['name'],
+            'email': current_user['email'],
+            'phone': current_user['phone'],
+            'role': current_user['role'],
+            'wallet_balance': current_user['wallet_balance'],
+            'payment_details': current_user.get('payment_details', {}),
+            'created_at': current_user['created_at'].isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch profile', 'error': str(e)}), 500
+
+@app.route('/api/user/update-payment-details', methods=['PUT'])
+@token_required
+def update_payment_details(current_user):
+    try:
+        data = request.json
+        
+        db.users.update_one(
+            {'_id': current_user['_id']},
+            {'$set': {'payment_details': data}}
+        )
+        
+        return jsonify({'message': 'Payment details updated successfully'}), 200
+    except Exception as e:
+        return jsonify({'message': 'Update failed', 'error': str(e)}), 500
+
+# ==================== WALLET ROUTES WITH RAZORPAY ====================
+
+@app.route('/api/wallet/balance', methods=['GET'])
+@token_required
+def get_wallet_balance(current_user):
+    try:
+        return jsonify({
+            'balance': current_user['wallet_balance']
+        }), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch balance', 'error': str(e)}), 500
+
+@app.route('/api/wallet/create-order', methods=['POST'])
+@token_required
+def create_razorpay_order(current_user):
     try:
         data = request.json
         amount = data.get('amount')
@@ -146,19 +202,25 @@ def add_money_razorpay(current_user):
             return jsonify({'message': 'Invalid amount'}), 400
         
         # Create Razorpay order
-        razorpay_data = {
-            'amount': int(amount * 100),  # Razorpay expects amount in paisa
+        order_data = {
+            'amount': int(amount * 100),  # Convert to paisa
             'currency': 'INR',
-            'receipt': f"wallet_{str(current_user['_id'])}_{datetime.utcnow().timestamp()}"
+            'receipt': f"wallet_{str(current_user['_id'])}_{int(datetime.utcnow().timestamp())}",
+            'notes': {
+                'user_id': str(current_user['_id']),
+                'type': 'wallet_topup'
+            }
         }
         
-        # In production, use Razorpay SDK
-        # For now, simulate the transaction
+        order = razorpay_client.order.create(data=order_data)
+        
+        # Save transaction in database
         transaction = {
             'user_id': current_user['_id'],
             'type': 'wallet_topup',
             'method': 'razorpay',
             'amount': amount,
+            'order_id': order['id'],
             'status': 'pending',
             'created_at': datetime.utcnow()
         }
@@ -166,157 +228,228 @@ def add_money_razorpay(current_user):
         result = db.transactions.insert_one(transaction)
         
         return jsonify({
-            'message': 'Payment initiated',
+            'message': 'Order created successfully',
             'transaction_id': str(result.inserted_id),
-            'order_details': razorpay_data
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Transaction failed', 'error': str(e)}), 500
-
-@app.route('/api/wallet/add-money/crypto', methods=['POST'])
-@token_required
-def add_money_crypto(current_user):
-    try:
-        data = request.json
-        amount = data.get('amount')
-        currency = data.get('currency', 'btc')  # btc, eth, usdt, etc.
-        
-        if not amount or amount <= 0:
-            return jsonify({'message': 'Invalid amount'}), 400
-        
-        # Create NOWPayments invoice
-        nowpayments_data = {
-            'price_amount': amount,
-            'price_currency': 'inr',
-            'pay_currency': currency,
-            'order_id': f"wallet_{str(current_user['_id'])}_{datetime.utcnow().timestamp()}",
-            'order_description': 'Wallet top-up'
-        }
-        
-        # In production, call NOWPayments API
-        # headers = {'x-api-key': app.config['NOWPAYMENTS_API_KEY']}
-        # response = requests.post('https://api.nowpayments.io/v1/invoice', json=nowpayments_data, headers=headers)
-        
-        transaction = {
-            'user_id': current_user['_id'],
-            'type': 'wallet_topup',
-            'method': 'crypto',
+            'order_id': order['id'],
             'amount': amount,
-            'currency': currency,
-            'status': 'pending',
-            'created_at': datetime.utcnow()
-        }
-        
-        result = db.transactions.insert_one(transaction)
-        
-        return jsonify({
-            'message': 'Crypto payment initiated',
-            'transaction_id': str(result.inserted_id),
-            'payment_url': 'https://nowpayments.io/payment/...'  # Would be actual URL in production
+            'key_id': app.config['RAZORPAY_KEY_ID']
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Transaction failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Order creation failed', 'error': str(e)}), 500
 
-@app.route('/api/wallet/confirm-payment', methods=['POST'])
+@app.route('/api/wallet/verify-payment', methods=['POST'])
 @token_required
-def confirm_payment(current_user):
+def verify_razorpay_payment(current_user):
     try:
         data = request.json
-        transaction_id = data.get('transaction_id')
         
-        transaction = db.transactions.find_one({'_id': ObjectId(transaction_id)})
+        # Verify payment signature
+        razorpay_order_id = data.get('razorpay_order_id')
+        razorpay_payment_id = data.get('razorpay_payment_id')
+        razorpay_signature = data.get('razorpay_signature')
+        
+        # Create signature
+        generated_signature = hmac.new(
+            app.config['RAZORPAY_KEY_SECRET'].encode(),
+            f"{razorpay_order_id}|{razorpay_payment_id}".encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if generated_signature != razorpay_signature:
+            return jsonify({'message': 'Invalid payment signature'}), 400
+        
+        # Update transaction
+        transaction = db.transactions.find_one({'order_id': razorpay_order_id})
         
         if not transaction:
             return jsonify({'message': 'Transaction not found'}), 404
         
-        if transaction['user_id'] != current_user['_id']:
-            return jsonify({'message': 'Unauthorized'}), 403
-        
         # Update transaction status
         db.transactions.update_one(
-            {'_id': ObjectId(transaction_id)},
-            {'$set': {'status': 'completed', 'completed_at': datetime.utcnow()}}
+            {'_id': transaction['_id']},
+            {
+                '$set': {
+                    'status': 'completed',
+                    'payment_id': razorpay_payment_id,
+                    'completed_at': datetime.utcnow()
+                }
+            }
         )
         
-        # Update user wallet
+        # Add money to wallet
         db.users.update_one(
             {'_id': current_user['_id']},
             {'$inc': {'wallet_balance': transaction['amount']}}
         )
         
+        # Create notification
+        notification = {
+            'user_id': current_user['_id'],
+            'type': 'wallet_topup',
+            'message': f'₹{transaction["amount"]} added to your wallet',
+            'created_at': datetime.utcnow(),
+            'is_read': False
+        }
+        db.notifications.insert_one(notification)
+        
         return jsonify({
-            'message': 'Payment confirmed',
+            'message': 'Payment verified successfully',
             'new_balance': current_user['wallet_balance'] + transaction['amount']
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Confirmation failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Verification failed', 'error': str(e)}), 500
 
-@app.route('/api/wallet/balance', methods=['GET'])
+# ==================== CRYPTO PAYMENT WITH NOWPAYMENTS ====================
+
+@app.route('/api/wallet/create-crypto-payment', methods=['POST'])
 @token_required
-def get_wallet_balance(current_user):
-    return jsonify({
-        'balance': current_user['wallet_balance']
-    }), 200
+def create_crypto_payment(current_user):
+    try:
+        data = request.json
+        amount = data.get('amount')
+        pay_currency = data.get('currency', 'btc')  # btc, eth, usdt, etc.
+        
+        if not amount or amount <= 0:
+            return jsonify({'message': 'Invalid amount'}), 400
+        
+        # Create NOWPayments invoice
+        nowpayments_url = 'https://api.nowpayments.io/v1/invoice'
+        headers = {
+            'x-api-key': app.config['NOWPAYMENTS_API_KEY'],
+            'Content-Type': 'application/json'
+        }
+        
+        invoice_data = {
+            'price_amount': amount,
+            'price_currency': 'inr',
+            'pay_currency': pay_currency,
+            'order_id': f"wallet_{str(current_user['_id'])}_{int(datetime.utcnow().timestamp())}",
+            'order_description': 'Wallet Top-up',
+            'ipn_callback_url': f'{request.host_url}api/wallet/crypto-webhook',
+            'success_url': f'{request.host_url}wallet-success',
+            'cancel_url': f'{request.host_url}wallet-cancel'
+        }
+        
+        response = requests.post(nowpayments_url, json=invoice_data, headers=headers)
+        
+        if response.status_code != 200:
+            return jsonify({'message': 'Failed to create crypto payment', 'error': response.text}), 500
+        
+        invoice = response.json()
+        
+        # Save transaction in database
+        transaction = {
+            'user_id': current_user['_id'],
+            'type': 'wallet_topup',
+            'method': 'crypto',
+            'amount': amount,
+            'currency': pay_currency,
+            'invoice_id': invoice['id'],
+            'status': 'pending',
+            'created_at': datetime.utcnow()
+        }
+        
+        result = db.transactions.insert_one(transaction)
+        
+        return jsonify({
+            'message': 'Crypto payment created',
+            'transaction_id': str(result.inserted_id),
+            'payment_url': invoice['invoice_url'],
+            'invoice_id': invoice['id']
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Crypto payment creation failed', 'error': str(e)}), 500
 
-# ==================== PARKING LISTING ROUTES ====================
+@app.route('/api/wallet/crypto-webhook', methods=['POST'])
+def crypto_webhook():
+    try:
+        data = request.json
+        
+        # Find transaction by invoice_id
+        transaction = db.transactions.find_one({'invoice_id': data.get('invoice_id')})
+        
+        if not transaction:
+            return jsonify({'message': 'Transaction not found'}), 404
+        
+        # Check payment status
+        if data.get('payment_status') == 'finished':
+            # Update transaction
+            db.transactions.update_one(
+                {'_id': transaction['_id']},
+                {
+                    '$set': {
+                        'status': 'completed',
+                        'payment_id': data.get('payment_id'),
+                        'completed_at': datetime.utcnow()
+                    }
+                }
+            )
+            
+            # Add money to wallet
+            db.users.update_one(
+                {'_id': transaction['user_id']},
+                {'$inc': {'wallet_balance': transaction['amount']}}
+            )
+            
+            # Create notification
+            notification = {
+                'user_id': transaction['user_id'],
+                'type': 'wallet_topup',
+                'message': f'₹{transaction["amount"]} added to your wallet via crypto',
+                'created_at': datetime.utcnow(),
+                'is_read': False
+            }
+            db.notifications.insert_one(notification)
+        
+        return jsonify({'message': 'Webhook processed'}), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Webhook processing failed', 'error': str(e)}), 500
 
-@app.route('/api/parking/create', methods=['POST'])
+# ==================== PARKING MANAGEMENT ====================
+
+@app.route('/api/parkings', methods=['POST'])
 @token_required
 def create_parking(current_user):
     try:
-        if current_user['role'] not in ['host', 'admin']:
+        if current_user['role'] != 'host':
             return jsonify({'message': 'Only hosts can create parking listings'}), 403
         
-        data = request.form.to_dict()
+        data = request.json
         
         # Validate required fields
-        required_fields = ['title', 'description', 'address', 'city', 'latitude', 
-                          'longitude', 'vehicle_type', 'price_per_hour', 'available_from', 
-                          'available_to', 'total_hours']
-        
+        required_fields = ['title', 'description', 'address', 'city', 'location', 'vehicle_type', 
+                          'price_per_hour', 'total_hours', 'min_rental_hours']
         for field in required_fields:
             if field not in data:
                 return jsonify({'message': f'{field} is required'}), 400
         
-        # Handle image uploads
-        images = []
-        if 'images' in request.files:
-            files = request.files.getlist('images')
-            for file in files:
-                if file and allowed_file(file.filename):
-                    filename = secure_filename(f"{datetime.utcnow().timestamp()}_{file.filename}")
-                    filepath = os.path.join(UPLOAD_FOLDER, filename)
-                    file.save(filepath)
-                    images.append(f'/static/uploads/parking/{filename}')
-        
-        # Calculate minimum rental hours (70% of total hours)
-        total_hours = int(data['total_hours'])
-        min_rental_hours = int(total_hours * 0.7)
-        
+        # Create parking listing
         parking = {
             'host_id': current_user['_id'],
             'host_name': current_user['name'],
             'host_phone': current_user['phone'],
+            'host_payment_details': current_user.get('payment_details', {}),
             'title': data['title'],
             'description': data['description'],
             'address': data['address'],
             'city': data['city'].lower(),
-            'state': 'tamil nadu',
+            'state': data.get('state', 'tamil nadu').lower(),
             'location': {
                 'type': 'Point',
-                'coordinates': [float(data['longitude']), float(data['latitude'])]
+                'coordinates': data['location']  # [longitude, latitude]
             },
             'vehicle_type': data['vehicle_type'],  # '2-wheeler' or '4-wheeler'
             'price_per_hour': float(data['price_per_hour']),
-            'available_from': datetime.fromisoformat(data['available_from']),
-            'available_to': datetime.fromisoformat(data['available_to']),
-            'total_hours': total_hours,
-            'min_rental_hours': min_rental_hours,
-            'images': images,
-            'amenities': data.get('amenities', '').split(',') if data.get('amenities') else [],
+            'total_hours': int(data['total_hours']),
+            'min_rental_hours': int(data['min_rental_hours']),
+            'amenities': data.get('amenities', []),
+            'images': data.get('images', []),
+            'available_from': datetime.fromisoformat(data.get('available_from', datetime.utcnow().isoformat())),
+            'available_to': datetime.fromisoformat(data.get('available_to', (datetime.utcnow() + timedelta(days=365)).isoformat())),
             'status': 'pending',  # pending, approved, rejected
             'is_available': True,
             'created_at': datetime.utcnow(),
@@ -327,62 +460,40 @@ def create_parking(current_user):
         result = db.parkings.insert_one(parking)
         
         return jsonify({
-            'message': 'Parking listing created successfully',
+            'message': 'Parking listing created successfully and pending approval',
             'parking_id': str(result.inserted_id)
         }), 201
         
     except Exception as e:
-        return jsonify({'message': 'Listing creation failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Failed to create parking', 'error': str(e)}), 500
 
-@app.route('/api/parking/search', methods=['GET'])
-def search_parking():
+@app.route('/api/parkings', methods=['GET'])
+def get_parkings():
     try:
         # Get query parameters
-        city = request.args.get('city', 'trichy').lower()
+        city = request.args.get('city', '').lower()
         vehicle_type = request.args.get('vehicle_type')
-        start_time = request.args.get('start_time')
-        end_time = request.args.get('end_time')
-        lat = request.args.get('latitude')
-        lng = request.args.get('longitude')
-        radius = float(request.args.get('radius', 5))  # km
+        status = request.args.get('status', 'approved')
         
         # Build query
-        query = {
-            'status': 'approved',
-            'is_available': True,
-            'city': city
-        }
+        query = {'status': status, 'is_available': True}
+        
+        if city:
+            query['city'] = city
         
         if vehicle_type:
             query['vehicle_type'] = vehicle_type
         
-        if start_time and end_time:
-            start = datetime.fromisoformat(start_time)
-            end = datetime.fromisoformat(end_time)
-            query['available_from'] = {'$lte': start}
-            query['available_to'] = {'$gte': end}
+        parkings = list(db.parkings.find(query).sort('created_at', -1))
         
-        # Location-based search
-        if lat and lng:
-            query['location'] = {
-                '$near': {
-                    '$geometry': {
-                        'type': 'Point',
-                        'coordinates': [float(lng), float(lat)]
-                    },
-                    '$maxDistance': radius * 1000  # Convert km to meters
-                }
-            }
-        
-        parkings = list(db.parkings.find(query).limit(50))
-        
-        # Convert ObjectId to string
         for parking in parkings:
             parking['_id'] = str(parking['_id'])
             parking['host_id'] = str(parking['host_id'])
             parking['available_from'] = parking['available_from'].isoformat()
             parking['available_to'] = parking['available_to'].isoformat()
             parking['created_at'] = parking['created_at'].isoformat()
+            # Don't expose host payment details in listing
+            parking.pop('host_payment_details', None)
         
         return jsonify({
             'count': len(parkings),
@@ -390,9 +501,9 @@ def search_parking():
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Search failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Failed to fetch parkings', 'error': str(e)}), 500
 
-@app.route('/api/parking/<parking_id>', methods=['GET'])
+@app.route('/api/parkings/<parking_id>', methods=['GET'])
 def get_parking_details(parking_id):
     try:
         parking = db.parkings.find_one({'_id': ObjectId(parking_id)})
@@ -405,17 +516,83 @@ def get_parking_details(parking_id):
         parking['available_from'] = parking['available_from'].isoformat()
         parking['available_to'] = parking['available_to'].isoformat()
         parking['created_at'] = parking['created_at'].isoformat()
+        parking.pop('host_payment_details', None)
         
         return jsonify(parking), 200
         
     except Exception as e:
-        return jsonify({'message': 'Failed to fetch parking', 'error': str(e)}), 500
+        return jsonify({'message': 'Failed to fetch parking details', 'error': str(e)}), 500
 
-@app.route('/api/parking/my-listings', methods=['GET'])
+@app.route('/api/parkings/search', methods=['GET'])
+def search_parkings():
+    try:
+        # Get search parameters
+        city = request.args.get('city', '').lower()
+        vehicle_type = request.args.get('vehicle_type')
+        min_price = request.args.get('min_price', type=float)
+        max_price = request.args.get('max_price', type=float)
+        lat = request.args.get('lat', type=float)
+        lng = request.args.get('lng', type=float)
+        radius = request.args.get('radius', 5000, type=int)  # in meters
+        
+        # Build query
+        query = {'status': 'approved', 'is_available': True}
+        
+        if city:
+            query['city'] = city
+        
+        if vehicle_type:
+            query['vehicle_type'] = vehicle_type
+        
+        if min_price is not None or max_price is not None:
+            query['price_per_hour'] = {}
+            if min_price is not None:
+                query['price_per_hour']['$gte'] = min_price
+            if max_price is not None:
+                query['price_per_hour']['$lte'] = max_price
+        
+        # Geospatial search
+        if lat is not None and lng is not None:
+            query['location'] = {
+                '$near': {
+                    '$geometry': {
+                        'type': 'Point',
+                        'coordinates': [lng, lat]
+                    },
+                    '$maxDistance': radius
+                }
+            }
+        
+        parkings = list(db.parkings.find(query).limit(50))
+        
+        for parking in parkings:
+            parking['_id'] = str(parking['_id'])
+            parking['host_id'] = str(parking['host_id'])
+            parking['available_from'] = parking['available_from'].isoformat()
+            parking['available_to'] = parking['available_to'].isoformat()
+            parking['created_at'] = parking['created_at'].isoformat()
+            parking.pop('host_payment_details', None)
+            
+            # Calculate distance if coordinates provided
+            if lat and lng:
+                parking['distance'] = 'Available'  # Would calculate actual distance in production
+        
+        return jsonify({
+            'count': len(parkings),
+            'parkings': parkings
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Search failed', 'error': str(e)}), 500
+
+@app.route('/api/parkings/my-listings', methods=['GET'])
 @token_required
 def get_my_listings(current_user):
     try:
-        parkings = list(db.parkings.find({'host_id': current_user['_id']}))
+        if current_user['role'] != 'host':
+            return jsonify({'message': 'Only hosts can view their listings'}), 403
+        
+        parkings = list(db.parkings.find({'host_id': current_user['_id']}).sort('created_at', -1))
         
         for parking in parkings:
             parking['_id'] = str(parking['_id'])
@@ -432,92 +609,87 @@ def get_my_listings(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to fetch listings', 'error': str(e)}), 500
 
-# ==================== BOOKING ROUTES ====================
+# ==================== BOOKING MANAGEMENT ====================
 
-@app.route('/api/booking/create', methods=['POST'])
+@app.route('/api/bookings', methods=['POST'])
 @token_required
 def create_booking(current_user):
     try:
-        if current_user['role'] not in ['driver', 'admin']:
+        if current_user['role'] != 'driver':
             return jsonify({'message': 'Only drivers can create bookings'}), 403
         
         data = request.json
         parking_id = data.get('parking_id')
-        start_time = datetime.fromisoformat(data.get('start_time'))
-        rental_hours = int(data.get('rental_hours'))
+        hours = data.get('hours')
+        payment_method = data.get('payment_method', 'wallet')  # 'wallet' or 'direct'
         
+        if not parking_id or not hours:
+            return jsonify({'message': 'Parking ID and hours are required'}), 400
+        
+        # Get parking details
         parking = db.parkings.find_one({'_id': ObjectId(parking_id)})
         
         if not parking:
             return jsonify({'message': 'Parking not found'}), 404
         
-        # Validate minimum rental hours
-        if rental_hours < parking['min_rental_hours']:
-            return jsonify({
-                'message': f'Minimum rental hours is {parking["min_rental_hours"]} (70% of {parking["total_hours"]} hours)'
-            }), 400
+        if parking['status'] != 'approved' or not parking['is_available']:
+            return jsonify({'message': 'Parking is not available'}), 400
         
-        # Calculate total cost
-        total_cost = parking['price_per_hour'] * rental_hours
+        if hours < parking['min_rental_hours']:
+            return jsonify({'message': f'Minimum rental hours is {parking["min_rental_hours"]}'}), 400
         
-        # Check wallet balance
-        if current_user['wallet_balance'] < total_cost:
-            return jsonify({
-                'message': 'Insufficient wallet balance',
-                'required': total_cost,
-                'available': current_user['wallet_balance']
-            }), 400
+        # Calculate cost
+        total_cost = parking['price_per_hour'] * hours
+        
+        # Check wallet balance if using wallet
+        if payment_method == 'wallet' and current_user['wallet_balance'] < total_cost:
+            return jsonify({'message': 'Insufficient wallet balance'}), 400
         
         # Create booking
-        end_time = start_time + timedelta(hours=rental_hours)
-        
         booking = {
-            'parking_id': parking['_id'],
             'driver_id': current_user['_id'],
             'driver_name': current_user['name'],
             'driver_phone': current_user['phone'],
             'host_id': parking['host_id'],
-            'start_time': start_time,
-            'end_time': end_time,
-            'rental_hours': rental_hours,
+            'host_name': parking['host_name'],
+            'host_phone': parking['host_phone'],
+            'parking_id': parking['_id'],
+            'parking_title': parking['title'],
+            'parking_address': parking['address'],
+            'hours': hours,
             'price_per_hour': parking['price_per_hour'],
             'total_cost': total_cost,
-            'status': 'payment_pending',  # payment_pending, confirmed, completed, cancelled
-            'payment_status': 'pending',
-            'created_at': datetime.utcnow()
+            'payment_method': payment_method,
+            'status': 'pending',  # pending, confirmed, rejected, completed, cancelled
+            'created_at': datetime.utcnow(),
+            'start_time': None,
+            'end_time': None,
+            'payment_status': 'pending'  # pending, paid, refunded
         }
         
         result = db.bookings.insert_one(booking)
         
-        # Deduct from driver's wallet (hold the amount)
-        db.users.update_one(
-            {'_id': current_user['_id']},
-            {'$inc': {'wallet_balance': -total_cost}}
-        )
-        
-        # Create transaction
-        transaction = {
+        # Notify host
+        notification = {
+            'user_id': parking['host_id'],
+            'type': 'new_booking',
             'booking_id': result.inserted_id,
-            'from_user': current_user['_id'],
-            'to_user': parking['host_id'],
-            'amount': total_cost,
-            'type': 'booking_payment',
-            'status': 'held',
-            'created_at': datetime.utcnow()
+            'message': f'New booking request from {current_user["name"]} for {parking["title"]}',
+            'created_at': datetime.utcnow(),
+            'is_read': False
         }
-        
-        db.transactions.insert_one(transaction)
+        db.notifications.insert_one(notification)
         
         return jsonify({
-            'message': 'Booking created successfully. Waiting for host confirmation.',
+            'message': 'Booking created successfully. Waiting for host approval',
             'booking_id': str(result.inserted_id),
             'total_cost': total_cost
         }), 201
         
     except Exception as e:
-        return jsonify({'message': 'Booking failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Booking creation failed', 'error': str(e)}), 500
 
-@app.route('/api/booking/confirm/<booking_id>', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/confirm', methods=['PUT'])
 @token_required
 def confirm_booking(current_user, booking_id):
     try:
@@ -528,10 +700,10 @@ def confirm_booking(current_user, booking_id):
         
         # Only host can confirm
         if booking['host_id'] != current_user['_id']:
-            return jsonify({'message': 'Unauthorized'}), 403
+            return jsonify({'message': 'Only the host can confirm this booking'}), 403
         
-        if booking['status'] != 'payment_pending':
-            return jsonify({'message': 'Booking already processed'}), 400
+        if booking['status'] != 'pending':
+            return jsonify({'message': 'Booking is not pending'}), 400
         
         # Update booking status
         db.bookings.update_one(
@@ -539,70 +711,157 @@ def confirm_booking(current_user, booking_id):
             {
                 '$set': {
                     'status': 'confirmed',
-                    'payment_status': 'completed',
-                    'confirmed_at': datetime.utcnow()
+                    'confirmed_at': datetime.utcnow(),
+                    'start_time': datetime.utcnow()
                 }
             }
         )
         
-        # Transfer money to host
-        db.users.update_one(
-            {'_id': current_user['_id']},
-            {'$inc': {'wallet_balance': booking['total_cost']}}
-        )
-        
-        # Update transaction
-        db.transactions.update_one(
-            {'booking_id': booking['_id']},
-            {'$set': {'status': 'completed', 'completed_at': datetime.utcnow()}}
-        )
-        
-        # Create notification for driver
+        # Notify driver
         notification = {
             'user_id': booking['driver_id'],
             'type': 'booking_confirmed',
-            'message': f'Your booking has been confirmed by the host',
             'booking_id': booking['_id'],
+            'message': f'Your booking for {booking["parking_title"]} has been confirmed',
+            'created_at': datetime.utcnow(),
+            'is_read': False
+        }
+        db.notifications.insert_one(notification)
+        
+        return jsonify({'message': 'Booking confirmed successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Confirmation failed', 'error': str(e)}), 500
+
+@app.route('/api/bookings/<booking_id>/complete-payment', methods=['POST'])
+@token_required
+def complete_booking_payment(current_user, booking_id):
+    try:
+        booking = db.bookings.find_one({'_id': ObjectId(booking_id)})
+        
+        if not booking:
+            return jsonify({'message': 'Booking not found'}), 404
+        
+        # Only driver can complete payment
+        if booking['driver_id'] != current_user['_id']:
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        if booking['status'] != 'confirmed':
+            return jsonify({'message': 'Booking is not confirmed'}), 400
+        
+        if booking['payment_status'] == 'paid':
+            return jsonify({'message': 'Payment already completed'}), 400
+        
+        payment_method = booking['payment_method']
+        total_cost = booking['total_cost']
+        
+        if payment_method == 'wallet':
+            # Deduct from driver's wallet
+            if current_user['wallet_balance'] < total_cost:
+                return jsonify({'message': 'Insufficient wallet balance'}), 400
+            
+            db.users.update_one(
+                {'_id': current_user['_id']},
+                {'$inc': {'wallet_balance': -total_cost}}
+            )
+            
+            # Add to host's wallet (with platform fee deduction)
+            platform_fee = total_cost * 0.05  # 5% platform fee
+            host_amount = total_cost - platform_fee
+            
+            db.users.update_one(
+                {'_id': booking['host_id']},
+                {'$inc': {'wallet_balance': host_amount}}
+            )
+            
+        elif payment_method == 'direct':
+            # Direct payment to host
+            # In production, this would integrate with payment gateway
+            platform_fee = total_cost * 0.05
+            host_amount = total_cost - platform_fee
+        
+        # Update booking
+        db.bookings.update_one(
+            {'_id': ObjectId(booking_id)},
+            {
+                '$set': {
+                    'status': 'completed',
+                    'payment_status': 'paid',
+                    'end_time': datetime.utcnow(),
+                    'completed_at': datetime.utcnow()
+                }
+            }
+        )
+        
+        # Create transaction record
+        transaction = {
+            'booking_id': booking['_id'],
+            'driver_id': booking['driver_id'],
+            'host_id': booking['host_id'],
+            'amount': total_cost,
+            'platform_fee': platform_fee,
+            'host_amount': host_amount,
+            'payment_method': payment_method,
+            'type': 'booking_payment',
+            'status': 'completed',
+            'created_at': datetime.utcnow()
+        }
+        db.transactions.insert_one(transaction)
+        
+        # Notify host
+        notification = {
+            'user_id': booking['host_id'],
+            'type': 'payment_received',
+            'booking_id': booking['_id'],
+            'message': f'Payment of ₹{host_amount:.2f} received for booking #{str(booking["_id"])[:8]}',
+            'created_at': datetime.utcnow(),
+            'is_read': False
+        }
+        db.notifications.insert_one(notification)
+        
+        # Notify driver
+        notification = {
+            'user_id': booking['driver_id'],
+            'type': 'booking_completed',
+            'booking_id': booking['_id'],
+            'message': f'Booking completed. Payment of ₹{total_cost} processed',
             'created_at': datetime.utcnow(),
             'is_read': False
         }
         db.notifications.insert_one(notification)
         
         return jsonify({
-            'message': 'Booking confirmed successfully',
-            'amount_received': booking['total_cost']
+            'message': 'Payment completed successfully',
+            'amount_paid': total_cost,
+            'platform_fee': platform_fee
         }), 200
         
     except Exception as e:
-        return jsonify({'message': 'Confirmation failed', 'error': str(e)}), 500
+        return jsonify({'message': 'Payment failed', 'error': str(e)}), 500
 
-@app.route('/api/booking/my-bookings', methods=['GET'])
+@app.route('/api/bookings/user', methods=['GET'])
 @token_required
-def get_my_bookings(current_user):
+def get_user_bookings(current_user):
     try:
         role = current_user['role']
         
         if role == 'driver':
-            bookings = list(db.bookings.find({'driver_id': current_user['_id']}))
+            bookings = list(db.bookings.find({'driver_id': current_user['_id']}).sort('created_at', -1))
         elif role == 'host':
-            bookings = list(db.bookings.find({'host_id': current_user['_id']}))
+            bookings = list(db.bookings.find({'host_id': current_user['_id']}).sort('created_at', -1))
         else:
-            bookings = list(db.bookings.find({}))
+            return jsonify({'message': 'Invalid role'}), 400
         
         for booking in bookings:
             booking['_id'] = str(booking['_id'])
-            booking['parking_id'] = str(booking['parking_id'])
             booking['driver_id'] = str(booking['driver_id'])
             booking['host_id'] = str(booking['host_id'])
-            booking['start_time'] = booking['start_time'].isoformat()
-            booking['end_time'] = booking['end_time'].isoformat()
+            booking['parking_id'] = str(booking['parking_id'])
             booking['created_at'] = booking['created_at'].isoformat()
-            
-            # Get parking details
-            parking = db.parkings.find_one({'_id': ObjectId(booking['parking_id'])})
-            if parking:
-                booking['parking_title'] = parking['title']
-                booking['parking_address'] = parking['address']
+            if booking.get('start_time'):
+                booking['start_time'] = booking['start_time'].isoformat()
+            if booking.get('end_time'):
+                booking['end_time'] = booking['end_time'].isoformat()
         
         return jsonify({
             'count': len(bookings),
@@ -612,154 +871,7 @@ def get_my_bookings(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to fetch bookings', 'error': str(e)}), 500
 
-# ==================== RATING ROUTES ====================
-
-@app.route('/api/rating/add', methods=['POST'])
-@token_required
-def add_rating(current_user):
-    try:
-        data = request.json
-        booking_id = data.get('booking_id')
-        rating = int(data.get('rating'))
-        review = data.get('review', '')
-        
-        if rating < 1 or rating > 5:
-            return jsonify({'message': 'Rating must be between 1 and 5'}), 400
-        
-        booking = db.bookings.find_one({'_id': ObjectId(booking_id)})
-        
-        if not booking:
-            return jsonify({'message': 'Booking not found'}), 404
-        
-        if booking['driver_id'] != current_user['_id']:
-            return jsonify({'message': 'Unauthorized'}), 403
-        
-        if booking['status'] != 'completed':
-            return jsonify({'message': 'Can only rate completed bookings'}), 400
-        
-        # Add rating to parking
-        rating_obj = {
-            'user_id': current_user['_id'],
-            'user_name': current_user['name'],
-            'booking_id': booking['_id'],
-            'rating': rating,
-            'review': review,
-            'created_at': datetime.utcnow()
-        }
-        
-        db.parkings.update_one(
-            {'_id': booking['parking_id']},
-            {'$push': {'ratings': rating_obj}}
-        )
-        
-        # Update average rating
-        parking = db.parkings.find_one({'_id': booking['parking_id']})
-        ratings = parking.get('ratings', [])
-        avg_rating = sum(r['rating'] for r in ratings) / len(ratings)
-        
-        db.parkings.update_one(
-            {'_id': booking['parking_id']},
-            {'$set': {'average_rating': avg_rating}}
-        )
-        
-        return jsonify({
-            'message': 'Rating added successfully',
-            'average_rating': avg_rating
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Rating failed', 'error': str(e)}), 500
-
-# ==================== CHAT ROUTES ====================
-
-@app.route('/api/chat/send', methods=['POST'])
-@token_required
-def send_message(current_user):
-    try:
-        data = request.json
-        booking_id = data.get('booking_id')
-        message = data.get('message')
-        
-        booking = db.bookings.find_one({'_id': ObjectId(booking_id)})
-        
-        if not booking:
-            return jsonify({'message': 'Booking not found'}), 404
-        
-        # Verify user is part of this booking
-        if current_user['_id'] not in [booking['driver_id'], booking['host_id']]:
-            return jsonify({'message': 'Unauthorized'}), 403
-        
-        # Create message
-        chat_message = {
-            'booking_id': booking['_id'],
-            'sender_id': current_user['_id'],
-            'sender_name': current_user['name'],
-            'message': message,
-            'created_at': datetime.utcnow(),
-            'is_read': False
-        }
-        
-        result = db.messages.insert_one(chat_message)
-        
-        # Create notification for receiver
-        receiver_id = booking['host_id'] if current_user['_id'] == booking['driver_id'] else booking['driver_id']
-        
-        notification = {
-            'user_id': receiver_id,
-            'type': 'new_message',
-            'message': f'New message from {current_user["name"]}',
-            'booking_id': booking['_id'],
-            'created_at': datetime.utcnow(),
-            'is_read': False
-        }
-        db.notifications.insert_one(notification)
-        
-        return jsonify({
-            'message': 'Message sent successfully',
-            'message_id': str(result.inserted_id)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to send message', 'error': str(e)}), 500
-
-@app.route('/api/chat/<booking_id>', methods=['GET'])
-@token_required
-def get_messages(current_user, booking_id):
-    try:
-        booking = db.bookings.find_one({'_id': ObjectId(booking_id)})
-        
-        if not booking:
-            return jsonify({'message': 'Booking not found'}), 404
-        
-        if current_user['_id'] not in [booking['driver_id'], booking['host_id']]:
-            return jsonify({'message': 'Unauthorized'}), 403
-        
-        messages = list(db.messages.find({'booking_id': ObjectId(booking_id)}).sort('created_at', 1))
-        
-        for msg in messages:
-            msg['_id'] = str(msg['_id'])
-            msg['booking_id'] = str(msg['booking_id'])
-            msg['sender_id'] = str(msg['sender_id'])
-            msg['created_at'] = msg['created_at'].isoformat()
-        
-        # Mark messages as read
-        db.messages.update_many(
-            {
-                'booking_id': ObjectId(booking_id),
-                'sender_id': {'$ne': current_user['_id']}
-            },
-            {'$set': {'is_read': True}}
-        )
-        
-        return jsonify({
-            'count': len(messages),
-            'messages': messages
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to fetch messages', 'error': str(e)}), 500
-
-# ==================== NOTIFICATION ROUTES ====================
+# ==================== NOTIFICATIONS ====================
 
 @app.route('/api/notifications', methods=['GET'])
 @token_required
@@ -781,20 +893,6 @@ def get_notifications(current_user):
         
     except Exception as e:
         return jsonify({'message': 'Failed to fetch notifications', 'error': str(e)}), 500
-
-@app.route('/api/notifications/mark-read/<notification_id>', methods=['PUT'])
-@token_required
-def mark_notification_read(current_user, notification_id):
-    try:
-        db.notifications.update_one(
-            {'_id': ObjectId(notification_id), 'user_id': current_user['_id']},
-            {'$set': {'is_read': True}}
-        )
-        
-        return jsonify({'message': 'Notification marked as read'}), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to update notification', 'error': str(e)}), 500
 
 # ==================== ADMIN ROUTES ====================
 
@@ -827,13 +925,12 @@ def approve_listing(current_user, parking_id):
     try:
         result = db.parkings.update_one(
             {'_id': ObjectId(parking_id)},
-            {'$set': {'status': 'approved', 'approved_at': datetime.utcnow(), 'approved_by': current_user['_id']}}
+            {'$set': {'status': 'approved', 'approved_at': datetime.utcnow()}}
         )
         
         if result.modified_count == 0:
             return jsonify({'message': 'Parking not found'}), 404
         
-        # Notify host
         parking = db.parkings.find_one({'_id': ObjectId(parking_id)})
         notification = {
             'user_id': parking['host_id'],
@@ -849,83 +946,11 @@ def approve_listing(current_user, parking_id):
     except Exception as e:
         return jsonify({'message': 'Approval failed', 'error': str(e)}), 500
 
-@app.route('/api/admin/reject-listing/<parking_id>', methods=['PUT'])
-@token_required
-@admin_required
-def reject_listing(current_user, parking_id):
-    try:
-        data = request.json
-        reason = data.get('reason', 'No reason provided')
-        
-        result = db.parkings.update_one(
-            {'_id': ObjectId(parking_id)},
-            {
-                '$set': {
-                    'status': 'rejected',
-                    'rejected_at': datetime.utcnow(),
-                    'rejected_by': current_user['_id'],
-                    'rejection_reason': reason
-                }
-            }
-        )
-        
-        if result.modified_count == 0:
-            return jsonify({'message': 'Parking not found'}), 404
-        
-        # Notify host
-        parking = db.parkings.find_one({'_id': ObjectId(parking_id)})
-        notification = {
-            'user_id': parking['host_id'],
-            'type': 'listing_rejected',
-            'message': f'Your parking listing "{parking["title"]}" has been rejected. Reason: {reason}',
-            'created_at': datetime.utcnow(),
-            'is_read': False
-        }
-        db.notifications.insert_one(notification)
-        
-        return jsonify({'message': 'Listing rejected successfully'}), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Rejection failed', 'error': str(e)}), 500
-
-@app.route('/api/admin/dashboard', methods=['GET'])
-@token_required
-@admin_required
-def admin_dashboard(current_user):
-    try:
-        stats = {
-            'total_users': db.users.count_documents({}),
-            'total_hosts': db.users.count_documents({'role': 'host'}),
-            'total_drivers': db.users.count_documents({'role': 'driver'}),
-            'total_parkings': db.parkings.count_documents({}),
-            'pending_parkings': db.parkings.count_documents({'status': 'pending'}),
-            'approved_parkings': db.parkings.count_documents({'status': 'approved'}),
-            'total_bookings': db.bookings.count_documents({}),
-            'active_bookings': db.bookings.count_documents({'status': 'confirmed'}),
-            'total_revenue': 0
-        }
-        
-        # Calculate total revenue
-        pipeline = [
-            {'$match': {'status': 'completed'}},
-            {'$group': {'_id': None, 'total': {'$sum': '$total_cost'}}}
-        ]
-        revenue = list(db.transactions.aggregate(pipeline))
-        if revenue:
-            stats['total_revenue'] = revenue[0]['total']
-        
-        return jsonify(stats), 200
-        
-    except Exception as e:
-        return jsonify({'message': 'Failed to fetch dashboard', 'error': str(e)}), 500
-
 # ==================== HEALTH CHECK ====================
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint for monitoring"""
     try:
-        # Check database connection
         db.users.find_one()
         return jsonify({
             'status': 'healthy',
@@ -950,4 +975,5 @@ def admin():
     return render_template('admin.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
