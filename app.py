@@ -21,7 +21,7 @@ from routes_admin_notification import admin_bp, notification_bp
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-please-change-in-production')
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_FILE_SIZE', 5242880))
 
@@ -92,12 +92,16 @@ def file_too_large(error):
     return jsonify({'error': 'File too large'}), 413
 
 if __name__ == '__main__':
+    # Get port from environment variable for deployment platforms
+    port = int(os.getenv('PORT', 5000))
+    
     print("=" * 50)
     print("P2P Parking System Starting...")
     print("=" * 50)
-    print(f"Environment: {os.getenv('FLASK_ENV')}")
-    print(f"Database: {os.getenv('DB_NAME')}")
+    print(f"Environment: {os.getenv('FLASK_ENV', 'production')}")
+    print(f"Database: {os.getenv('DB_NAME', 'smartcityparking')}")
     print(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+    print(f"Port: {port}")
     print("=" * 50)
     print("\nAPI Endpoints:")
     print("Authentication: /api/auth/*")
@@ -112,6 +116,6 @@ if __name__ == '__main__':
     
     app.run(
         host='0.0.0.0',
-        port=5000,
-        debug=os.getenv('FLASK_DEBUG', 'True') == 'True'
+        port=port,
+        debug=os.getenv('FLASK_DEBUG', 'False') == 'True'
     )

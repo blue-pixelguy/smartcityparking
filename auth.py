@@ -6,7 +6,7 @@ from flask import request, jsonify
 from bson import ObjectId
 from database import db
 
-JWT_SECRET = os.getenv('JWT_SECRET')
+JWT_SECRET = os.getenv('JWT_SECRET', 'dev-jwt-secret-please-change-in-production')
 JWT_ALGORITHM = 'HS256'
 
 def create_token(user_id, role):
