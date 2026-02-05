@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart City Parking - Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .badge-pending {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .badge-approved {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-confirmed {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .badge-completed {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .wallet-balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🅿️ Smart City Parking - Test Interface</h1>
+            <p>Peer-to-Peer Parking System</p>
+            <div class="user-info hidden" id="userInfo">
+                <div>
+                    <strong>User:</strong> <span id="userName"></span> |
+                    <strong>Role:</strong> <span id="userRole"></span> |
+                    <strong>Wallet:</strong> ₹<span id="userWallet">0</span>
+                </div>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Login/Register Section -->
+        <div class="section" id="authSection">
+            <h2>Authentication</h2>
+            <div class="tabs">
+                <button class="tab active" onclick="showAuthTab('login')">Login</button>
+                <button class="tab" onclick="showAuthTab('register')">Register</button>
+            </div>
+            
+            <div id="loginForm">
+                <div class="message" id="loginMessage"></div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" value="host@parkeasy.com">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" value="password123">
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+            </div>
+            
+            <div id="registerForm" class="hidden">
+                <div class="message" id="registerMessage"></div>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="regName">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="regEmail">
+                </div>
+                <div class="form-group">
+                    <label>Phone (10 digits)</label>
+                    <input type="tel" id="regPhone" pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="regRole">
+                        <option value="driver">Driver (Looking for parking)</option>
+                        <option value="host">Host (Offer parking space)</option>
+                        <option value="admin">Admin (Platform Management)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="adminPasswordGroup" style="display: none;">
+                    <label>Admin Password (Required for Admin role)</label>
+                    <input type="password" id="regAdminPassword" placeholder="Enter admin password">
+                    <small style="color: #666;">Contact platform owner for admin password</small>
+                </div>
+                <button class="btn" onclick="register()">Register</button>
+            </div>
+        </div>
+
+        <!-- Main App Section (Hidden until login) -->
+        <div id="appSection" class="hidden">
+            <!-- Wallet Section -->
+            <div class="section">
+                <h2>💰 Wallet</h2>
+                <div class="wallet-balance">₹<span id="walletBalance">0</span></div>
+                <div style="margin-top: 15px;">
+                    <input type="number" id="topupAmount" placeholder="Enter amount" style="width: 200px; padding: 10px; margin-right: 10px;">
+                    <button class="btn btn-success" onclick="topupWallet('razorpay')">Add via Razorpay</button>
+                    <button class="btn btn-secondary" onclick="topupWallet('crypto')">Add via Crypto</button>
+                </div>
+            </div>
+
+            <!-- Host Section -->
+            <div class="section hidden" id="hostSection">
+                <h2>🏠 Host Dashboard</h2>
+                <div class="tabs">
+                    <button class="tab active" onclick="showHostTab('create')">Create Listing</button>
+                    <button class="tab" onclick="showHostTab('mylistings')">My Listings</button>
+                    <button class="tab" onclick="showHostTab('bookings')">Bookings</button>
+                </div>
+                
+                <div id="createListing">
+                    <div class="message" id="createMessage"></div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="parkingTitle" placeholder="e.g., Secure Parking near Central">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="parkingDescription" placeholder="Describe your parking space"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" id="parkingAddress" placeholder="Full address">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="parkingCity" value="Trichy">
+                    </div>
+                    <div class="form-group">
+                        <label>Vehicle Type</label>
+                        <select id="parkingVehicleType">
+                            <option value="2-wheeler">2-Wheeler</option>
+                            <option value="4-wheeler">4-Wheeler</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Price per Hour (₹)</label>
+                        <input type="number" id="parkingPrice" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Hours Available</label>
+                        <input type="number" id="parkingTotalHours" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Minimum Rental Hours</label>
+                        <input type="number" id="parkingMinHours" value="2">
+                    </div>
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="number" step="0.000001" id="parkingLat" value="10.7905">
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="number" step="0.000001" id="parkingLng" value="78.7047">
+                    </div>
+                    <button class="btn btn-success" onclick="createParking()">Create Listing</button>
+                </div>
+                
+                <div id="myListings" class="hidden">
+                    <div class="grid" id="myListingsGrid"></div>
+                </div>
+                
+                <div id="hostBookings" class="hidden">
+                    <div class="grid" id="hostBookingsGrid"></div>
+                </div>
+            </div>
+
+            <!-- Driver Section -->
+            <div class="section hidden" id="driverSection">
+                <h2>🚗 Driver Dashboard</h2>
+                <div class="tabs">
+                    <button class="tab active" onclick="showDriverTab('search')">Search Parking</button>
+                    <button class="tab" onclick="showDriverTab('mybookings')">My Bookings</button>
+                </div>
+                
+                <div id="searchParking">
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="searchCity" value="Trichy">
+                    </div>
+                    <div class="form-group">
+                        <label>Vehicle Type</label>
+                        <select id="searchVehicleType">
+                            <option value="">All</option>
+                            <option value="2-wheeler">2-Wheeler</option>
+                            <option value="4-wheeler">4-Wheeler</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="searchParkings()">Search</button>
+                    <div class="grid" id="searchResults"></div>
+                </div>
+                
+                <div id="myBookings" class="hidden">
+                    <div class="grid" id="myBookingsGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+
+        // Initialize
+        if (token && currentUser) {
+            showApp();
+        }
+
+        function showMessage(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = `message ${type}`;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        function showAuthTab(tab) {
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+            document.querySelectorAll('#authSection .tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Show admin password field when admin role selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleSelect = document.getElementById('regRole');
+            const adminPasswordGroup = document.getElementById('adminPasswordGroup');
+            
+            if (roleSelect) {
+                roleSelect.addEventListener('change', function() {
+                    if (this.value === 'admin') {
+                        adminPasswordGroup.style.display = 'block';
+                    } else {
+                        adminPasswordGroup.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        async function register() {
+            const role = document.getElementById('regRole').value;
+            const data = {
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                phone: document.getElementById('regPhone').value,
+                password: document.getElementById('regPassword').value,
+                role: role
+            };
+
+            // Add admin password header if registering as admin
+            const headers = {'Content-Type': 'application/json'};
+            if (role === 'admin') {
+                const adminPassword = document.getElementById('regAdminPassword').value;
+                if (!adminPassword) {
+                    showMessage('registerMessage', 'Admin password is required for admin role', 'error');
+                    return;
+                }
+                headers['X-Admin-Password'] = adminPassword;
+            }
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('registerMessage', result.message, 'success');
+                    setTimeout(() => showAuthTab('login'), 2000);
+                } else {
+                    showMessage('registerMessage', result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('registerMessage', 'Registration failed', 'error');
+            }
+        }
+
+        async function login() {
+            const data = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    token = result.token;
+                    currentUser = result.user;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    showMessage('loginMessage', result.message, 'success');
+                    setTimeout(() => showApp(), 1000);
+                } else {
+                    showMessage('loginMessage', result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('loginMessage', 'Login failed', 'error');
+            }
+        }
+
+        function showApp() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userRole').textContent = currentUser.role;
+            document.getElementById('userWallet').textContent = currentUser.wallet_balance;
+            document.getElementById('walletBalance').textContent = currentUser.wallet_balance;
+            
+            if (currentUser.role === 'host') {
+                document.getElementById('hostSection').classList.remove('hidden');
+                loadMyListings();
+            } else {
+                document.getElementById('driverSection').classList.remove('hidden');
+                searchParkings();
+            }
+            
+            loadProfile();
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            location.reload();
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/user/profile', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    currentUser.wallet_balance = result.wallet_balance;
+                    document.getElementById('userWallet').textContent = result.wallet_balance;
+                    document.getElementById('walletBalance').textContent = result.wallet_balance;
+                }
+            } catch (error) {
+                console.error('Failed to load profile');
+            }
+        }
+
+        async function topupWallet(method) {
+            const amount = document.getElementById('topupAmount').value;
+            if (!amount || amount <= 0) {
+                alert('Please enter valid amount');
+                return;
+            }
+
+            if (method === 'razorpay') {
+                try {
+                    const response = await fetch('/api/wallet/create-order', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({amount: parseFloat(amount)})
+                    });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert(`Razorpay Order Created!\nOrder ID: ${result.order_id}\n\nIn production, Razorpay checkout would open here.`);
+                        // In production, integrate Razorpay checkout
+                    } else {
+                        alert(result.message);
+                    }
+                } catch (error) {
+                    alert('Failed to create order');
+                }
+            } else {
+                alert('Crypto payment integration coming soon!');
+            }
+        }
+
+        async function createParking() {
+            const data = {
+                title: document.getElementById('parkingTitle').value,
+                description: document.getElementById('parkingDescription').value,
+                address: document.getElementById('parkingAddress').value,
+                city: document.getElementById('parkingCity').value,
+                location: [
+                    parseFloat(document.getElementById('parkingLng').value),
+                    parseFloat(document.getElementById('parkingLat').value)
+                ],
+                vehicle_type: document.getElementById('parkingVehicleType').value,
+                price_per_hour: parseFloat(document.getElementById('parkingPrice').value),
+                total_hours: parseInt(document.getElementById('parkingTotalHours').value),
+                min_rental_hours: parseInt(document.getElementById('parkingMinHours').value),
+                amenities: ['CCTV', 'Covered']
+            };
+
+            try {
+                const response = await fetch('/api/parkings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showMessage('createMessage', result.message, 'success');
+                    // Clear form
+                    document.getElementById('parkingTitle').value = '';
+                    document.getElementById('parkingDescription').value = '';
+                    loadMyListings();
+                } else {
+                    showMessage('createMessage', result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('createMessage', 'Failed to create listing', 'error');
+            }
+        }
+
+        async function loadMyListings() {
+            try {
+                const response = await fetch('/api/parkings/my-listings', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const grid = document.getElementById('myListingsGrid');
+                    grid.innerHTML = result.parkings.map(p => `
+                        <div class="card">
+                            <h3>${p.title}</h3>
+                            <p><strong>Address:</strong> ${p.address}</p>
+                            <p><strong>Vehicle:</strong> ${p.vehicle_type}</p>
+                            <p><strong>Price:</strong> ₹${p.price_per_hour}/hour</p>
+                            <span class="badge badge-${p.status}">${p.status}</span>
+                        </div>
+                    `).join('') || '<p>No listings yet</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load listings');
+            }
+        }
+
+        async function searchParkings() {
+            const city = document.getElementById('searchCity').value;
+            const vehicleType = document.getElementById('searchVehicleType').value;
+            
+            try {
+                const params = new URLSearchParams({city});
+                if (vehicleType) params.append('vehicle_type', vehicleType);
+                
+                const response = await fetch(`/api/parkings?${params}`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const grid = document.getElementById('searchResults');
+                    grid.innerHTML = result.parkings.map(p => `
+                        <div class="card">
+                            <h3>${p.title}</h3>
+                            <p><strong>Address:</strong> ${p.address}</p>
+                            <p><strong>Vehicle:</strong> ${p.vehicle_type}</p>
+                            <p><strong>Price:</strong> ₹${p.price_per_hour}/hour</p>
+                            <p><strong>Min Hours:</strong> ${p.min_rental_hours}</p>
+                            <button class="btn btn-success" onclick="bookParking('${p._id}', ${p.min_rental_hours}, ${p.price_per_hour})">Book Now</button>
+                        </div>
+                    `).join('') || '<p>No parkings found</p>';
+                }
+            } catch (error) {
+                console.error('Search failed');
+            }
+        }
+
+        async function bookParking(parkingId, minHours, pricePerHour) {
+            const hours = prompt(`Enter number of hours (minimum ${minHours}):`, minHours);
+            if (!hours || hours < minHours) {
+                alert(`Minimum ${minHours} hours required`);
+                return;
+            }
+            
+            const totalCost = hours * pricePerHour;
+            const paymentMethod = confirm(`Total cost: ₹${totalCost}\n\nClick OK to pay via Wallet\nClick Cancel to pay directly to host`) ? 'wallet' : 'direct';
+            
+            try {
+                const response = await fetch('/api/bookings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        parking_id: parkingId,
+                        hours: parseInt(hours),
+                        payment_method: paymentMethod
+                    })
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message);
+                    loadMyBookings();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Booking failed');
+            }
+        }
+
+        async function loadMyBookings() {
+            try {
+                const response = await fetch('/api/bookings/user', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const grid = document.getElementById('myBookingsGrid');
+                    grid.innerHTML = result.bookings.map(b => `
+                        <div class="card">
+                            <h3>${b.parking_title}</h3>
+                            <p><strong>Hours:</strong> ${b.hours}</p>
+                            <p><strong>Total Cost:</strong> ₹${b.total_cost}</p>
+                            <p><strong>Payment:</strong> ${b.payment_method}</p>
+                            <span class="badge badge-${b.status}">${b.status}</span>
+                            ${b.status === 'confirmed' && b.payment_status === 'pending' ? 
+                                `<button class="btn btn-success" onclick="completePayment('${b._id}')">Complete Payment</button>` : ''}
+                        </div>
+                    `).join('') || '<p>No bookings yet</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load bookings');
+            }
+        }
+
+        async function completePayment(bookingId) {
+            if (!confirm('Complete payment for this booking?')) return;
+            
+            try {
+                const response = await fetch(`/api/bookings/${bookingId}/complete-payment`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message);
+                    loadMyBookings();
+                    loadProfile();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Payment failed');
+            }
+        }
+
+        function showHostTab(tab) {
+            document.getElementById('createListing').classList.toggle('hidden', tab !== 'create');
+            document.getElementById('myListings').classList.toggle('hidden', tab !== 'mylistings');
+            document.getElementById('hostBookings').classList.toggle('hidden', tab !== 'bookings');
+            
+            if (tab === 'mylistings') loadMyListings();
+            if (tab === 'bookings') loadHostBookings();
+        }
+
+        function showDriverTab(tab) {
+            document.getElementById('searchParking').classList.toggle('hidden', tab !== 'search');
+            document.getElementById('myBookings').classList.toggle('hidden', tab !== 'mybookings');
+            
+            if (tab === 'search') searchParkings();
+            if (tab === 'mybookings') loadMyBookings();
+        }
+
+        async function loadHostBookings() {
+            try {
+                const response = await fetch('/api/bookings/user', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const grid = document.getElementById('hostBookingsGrid');
+                    grid.innerHTML = result.bookings.map(b => `
+                        <div class="card">
+                            <h3>${b.parking_title}</h3>
+                            <p><strong>Driver:</strong> ${b.driver_name}</p>
+                            <p><strong>Phone:</strong> ${b.driver_phone}</p>
+                            <p><strong>Hours:</strong> ${b.hours}</p>
+                            <p><strong>Amount:</strong> ₹${b.total_cost}</p>
+                            <span class="badge badge-${b.status}">${b.status}</span>
+                            ${b.status === 'pending' ? 
+                                `<button class="btn btn-success" onclick="confirmBooking('${b._id}')">Accept</button>` : ''}
+                        </div>
+                    `).join('') || '<p>No bookings yet</p>';
+                }
+            } catch (error) {
+                console.error('Failed to load bookings');
+            }
+        }
+
+        async function confirmBooking(bookingId) {
+            try {
+                const response = await fetch(`/api/bookings/${bookingId}/confirm`, {
+                    method: 'PUT',
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message);
+                    loadHostBookings();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                alert('Failed to confirm booking');
+            }
+        }
+    </script>
+</body>
+</html>
