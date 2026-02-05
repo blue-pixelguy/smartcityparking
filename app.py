@@ -8,11 +8,18 @@ import os
 import jwt
 from functools import wraps
 import requests
-import razorpay
 import hmac
 import hashlib
 from config import Config
 from database import Database
+
+# Try to import razorpay, but don't fail if not available
+try:
+    import razorpay
+    RAZORPAY_AVAILABLE = True
+except ImportError:
+    RAZORPAY_AVAILABLE = False
+    print("Warning: razorpay not available. Wallet features will be limited.")
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -21,8 +28,14 @@ CORS(app)
 # Initialize Database
 db = Database()
 
-# Initialize Razorpay Client
-razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
+# Initialize Razorpay Client if available
+if RAZORPAY_AVAILABLE:
+    try:
+        razorpay_client = razorpay.Client(auth=(app.config['RAZORPAY_KEY_ID'], app.config['RAZORPAY_KEY_SECRET']))
+    except:
+        razorpay_client = None
+else:
+    razorpay_client = None
 
 # File upload configuration
 UPLOAD_FOLDER = 'static/uploads/parking'
@@ -63,6 +76,14 @@ def admin_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
+# Simple admin login check
+def check_admin_password():
+    """Simple function to check if admin password is correct"""
+    admin_password = request.headers.get('X-Admin-Password') or request.args.get('admin_password')
+    # Admin password from environment variable or default
+    correct_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    return admin_password == correct_password
+
 # ==================== AUTH ROUTES ====================
 
 @app.route('/api/auth/register', methods=['POST'])
@@ -77,8 +98,13 @@ def register():
                 return jsonify({'message': f'{field} is required'}), 400
         
         # Validate role
-        if data['role'] not in ['host', 'driver']:
-            return jsonify({'message': 'Role must be either host or driver'}), 400
+        if data['role'] not in ['host', 'driver', 'admin']:
+            return jsonify({'message': 'Role must be driver, host, or admin'}), 400
+        
+        # If registering as admin, require admin password
+        if data['role'] == 'admin':
+            if not check_admin_password():
+                return jsonify({'message': 'Admin password required to register as admin'}), 403
         
         # Check if user exists
         if db.users.find_one({'email': data['email']}):
@@ -95,9 +121,9 @@ def register():
             'phone': data['phone'],
             'role': data['role'],
             'wallet_balance': 0,
-            'payment_details': data.get('payment_details', {}),  # UPI, Bank account, etc.
+            'payment_details': data.get('payment_details', {}),
             'created_at': datetime.utcnow(),
-            'is_verified': True  # Auto-verify for now
+            'is_verified': True
         }
         
         result = db.users.insert_one(user)
@@ -195,6 +221,12 @@ def get_wallet_balance(current_user):
 @token_required
 def create_razorpay_order(current_user):
     try:
+        if not RAZORPAY_AVAILABLE or not razorpay_client:
+            return jsonify({
+                'message': 'Razorpay not configured. Please contact admin.',
+                'error': 'Payment gateway unavailable'
+            }), 503
+        
         data = request.json
         amount = data.get('amount')
         
