@@ -1002,6 +1002,11 @@ def health_check():
 def home():
     return render_template('index.html')
 
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+
 @app.route('/admin')
 def admin():
     return render_template('admin.html')
