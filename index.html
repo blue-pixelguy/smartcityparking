@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Parking - Trichy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .auth-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .info-section ul {
+            list-style-position: inside;
+            color: #666;
+        }
+
+        .info-section li {
+            margin-bottom: 8px;
+        }
+
+        .response {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .response.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .response pre {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        .trichy-areas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .area-card {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .area-card strong {
+            color: #667eea;
+        }
+
+        #map {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .auth-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 P2P Parking System - Trichy</h1>
+            <p>Peer-to-peer parking space rental platform for Trichy, Tamil Nadu</p>
+        </div>
+
+        <div class="auth-section">
+            <!-- Login Section -->
+            <div class="card">
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="loginEmail" placeholder="your@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit">Login</button>
+                    <div id="loginResponse" class="response"></div>
+                </form>
+            </div>
+
+            <!-- Signup Section -->
+            <div class="card">
+                <h2>Sign Up</h2>
+                <form id="signupForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="signupName" placeholder="John Doe" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="signupEmail" placeholder="your@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" id="signupPhone" placeholder="9876543210" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <select id="signupRole" required>
+                            <option value="driver">Driver (Looking for parking)</option>
+                            <option value="host">Host (Offering parking)</option>
+                        </select>
+                    </div>
+                    <button type="submit">Sign Up</button>
+                    <div id="signupResponse" class="response"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- API Endpoints Info -->
+        <div class="info-section">
+            <h3>📡 Available API Endpoints</h3>
+            <ul>
+                <li><strong>Authentication:</strong> /api/auth/signup, /api/auth/login</li>
+                <li><strong>Parking:</strong> /api/parking/list, /api/parking/search</li>
+                <li><strong>Booking:</strong> /api/booking/create, /api/booking/my-bookings</li>
+                <li><strong>Wallet:</strong> /api/wallet/balance, /api/wallet/add-money/*</li>
+                <li><strong>Messages:</strong> /api/messages/send, /api/messages/conversations</li>
+                <li><strong>Reviews:</strong> /api/reviews/create, /api/reviews/parking/:id</li>
+                <li><strong>Admin:</strong> /api/admin/dashboard, /api/admin/parking/pending</li>
+            </ul>
+        </div>
+
+        <!-- Trichy Areas -->
+        <div class="info-section">
+            <h3>📍 Covered Areas in Trichy</h3>
+            <div class="trichy-areas">
+                <div class="area-card">
+                    <strong>Srirangam</strong><br>
+                    <small>10.8650, 78.6936</small>
+                </div>
+                <div class="area-card">
+                    <strong>Thillai Nagar</strong><br>
+                    <small>10.8055, 78.6856</small>
+                </div>
+                <div class="area-card">
+                    <strong>Cantonment</strong><br>
+                    <small>10.8225, 78.6867</small>
+                </div>
+                <div class="area-card">
+                    <strong>Tennur</strong><br>
+                    <small>10.8139, 78.7047</small>
+                </div>
+                <div class="area-card">
+                    <strong>K.K. Nagar</strong><br>
+                    <small>10.7671, 78.7005</small>
+                </div>
+                <div class="area-card">
+                    <strong>Anna Nagar</strong><br>
+                    <small>10.8081, 78.7058</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="info-section">
+            <h3>✨ Key Features</h3>
+            <ul>
+                <li><strong>Smart Search:</strong> Find parking spaces near your location using Google Maps</li>
+                <li><strong>Flexible Booking:</strong> Book for 70-100% of listed hours</li>
+                <li><strong>Multiple Payments:</strong> Wallet, Razorpay (INR), NowPayments (Crypto)</li>
+                <li><strong>In-app Chat:</strong> Communicate directly with parking owners</li>
+                <li><strong>Reviews & Ratings:</strong> Rate your parking experience</li>
+                <li><strong>Admin Approval:</strong> All parking spaces verified before listing</li>
+                <li><strong>Real-time Notifications:</strong> Stay updated on bookings</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let authToken = localStorage.getItem('authToken');
+
+        // Login Form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const responseDiv = document.getElementById('loginResponse');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    showResponse(responseDiv, 'success', 'Login successful!', data);
+                } else {
+                    showResponse(responseDiv, 'error', 'Login failed', data);
+                }
+            } catch (error) {
+                showResponse(responseDiv, 'error', 'Network error', { error: error.message });
+            }
+        });
+
+        // Signup Form
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('signupName').value;
+            const email = document.getElementById('signupEmail').value;
+            const phone = document.getElementById('signupPhone').value;
+            const password = document.getElementById('signupPassword').value;
+            const role = document.getElementById('signupRole').value;
+            const responseDiv = document.getElementById('signupResponse');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, phone, password, role })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    showResponse(responseDiv, 'success', 'Signup successful!', data);
+                    
+                    // Clear form
+                    document.getElementById('signupForm').reset();
+                } else {
+                    showResponse(responseDiv, 'error', 'Signup failed', data);
+                }
+            } catch (error) {
+                showResponse(responseDiv, 'error', 'Network error', { error: error.message });
+            }
+        });
+
+        function showResponse(element, type, message, data) {
+            element.className = `response ${type}`;
+            element.innerHTML = `
+                <strong>${message}</strong>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            element.style.display = 'block';
+
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 10000);
+        }
+    </script>
+</body>
+</html>

@@ -1,206 +1,256 @@
 #!/usr/bin/env python3
 """
-Setup script for Parking Management System
-Initializes database collections and creates indexes
+Setup script for P2P Parking System
+This script initializes the database and creates sample data for testing
 """
 
 import sys
-from pymongo import ASCENDING, DESCENDING
-from config.database import db
+import os
+from datetime import datetime, timedelta
 
-def create_collections():
-    """Create collections with proper schemas"""
-    database = db.get_db()
+# Add parent directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from database import db
+from models import User, ParkingSpace, Wallet
+
+def create_admin_user():
+    """Create admin user"""
+    print("Creating admin user...")
     
-    if database is None:
-        print("✗ Database not connected. Please start MongoDB first.")
-        return False
+    # Check if admin exists
+    existing_admin = db.db.users.find_one({'email': 'admin@parking.com'})
+    if existing_admin:
+        print("Admin user already exists!")
+        return
     
-    collections = {
-        'users': [
-            ('email', ASCENDING, True),  # unique
-            ('username', ASCENDING, True)  # unique
-        ],
-        'parking_slots': [
-            ('slot_number', ASCENDING, True),  # unique
-            ('status', ASCENDING, False)
-        ],
-        'bookings': [
-            ('user_id', ASCENDING, False),
-            ('slot_id', ASCENDING, False),
-            ('status', ASCENDING, False),
-            ('start_time', DESCENDING, False)
-        ],
-        'payments': [
-            ('booking_id', ASCENDING, False),
-            ('user_id', ASCENDING, False),
-            ('payment_date', DESCENDING, False)
-        ]
-    }
+    admin = User(
+        name="Admin User",
+        email="admin@parking.com",
+        phone="9999999999",
+        password="admin123",
+        role="admin"
+    )
+    admin.is_verified = True
     
-    print("\n🔧 Setting up database collections...")
+    result = db.db.users.insert_one(admin.to_dict())
     
-    for collection_name, indexes in collections.items():
-        # Create collection if it doesn't exist
-        if collection_name not in database.list_collection_names():
-            database.create_collection(collection_name)
-            print(f"  ✓ Created collection: {collection_name}")
-        else:
-            print(f"  → Collection exists: {collection_name}")
+    # Create wallet for admin
+    wallet = Wallet(user_id=str(result.inserted_id), balance=10000.0)
+    db.db.wallets.insert_one(wallet.to_dict())
+    
+    print(f"✅ Admin created: admin@parking.com / admin123")
+    print(f"   User ID: {result.inserted_id}")
+
+def create_sample_users():
+    """Create sample users"""
+    print("\nCreating sample users...")
+    
+    users = [
+        {
+            'name': 'Rajesh Kumar',
+            'email': 'rajesh@example.com',
+            'phone': '9876543210',
+            'password': 'password123',
+            'role': 'host'
+        },
+        {
+            'name': 'Priya Sharma',
+            'email': 'priya@example.com',
+            'phone': '9876543211',
+            'password': 'password123',
+            'role': 'driver'
+        },
+        {
+            'name': 'Arun Venkat',
+            'email': 'arun@example.com',
+            'phone': '9876543212',
+            'password': 'password123',
+            'role': 'host'
+        },
+        {
+            'name': 'Lakshmi Devi',
+            'email': 'lakshmi@example.com',
+            'phone': '9876543213',
+            'password': 'password123',
+            'role': 'driver'
+        }
+    ]
+    
+    created_users = []
+    
+    for user_data in users:
+        # Check if user exists
+        existing = db.db.users.find_one({'email': user_data['email']})
+        if existing:
+            print(f"   User {user_data['email']} already exists, skipping...")
+            created_users.append(str(existing['_id']))
+            continue
         
-        # Create indexes
-        collection = database[collection_name]
-        for index_field, order, unique in indexes:
-            try:
-                collection.create_index(
-                    [(index_field, order)],
-                    unique=unique,
-                    background=True
-                )
-                unique_str = " (unique)" if unique else ""
-                print(f"    ✓ Index: {index_field}{unique_str}")
-            except Exception as e:
-                print(f"    ⚠ Index {index_field}: {str(e)}")
+        user = User(
+            name=user_data['name'],
+            email=user_data['email'],
+            phone=user_data['phone'],
+            password=user_data['password'],
+            role=user_data['role']
+        )
+        user.is_verified = True
+        
+        result = db.db.users.insert_one(user.to_dict())
+        user_id = str(result.inserted_id)
+        created_users.append(user_id)
+        
+        # Create wallet
+        wallet = Wallet(user_id=user_id, balance=5000.0)
+        db.db.wallets.insert_one(wallet.to_dict())
+        
+        print(f"✅ Created: {user_data['name']} ({user_data['email']}) - {user_data['role']}")
     
-    return True
+    return created_users
 
-def create_default_slots():
-    """Create default parking slots"""
-    database = db.get_db()
+def create_sample_parking(user_ids):
+    """Create sample parking spaces"""
+    print("\nCreating sample parking spaces...")
     
-    if database is None:
-        return False
-    
-    slots_collection = database['parking_slots']
-    
-    # Check if slots already exist
-    if slots_collection.count_documents({}) > 0:
-        print("\n✓ Parking slots already initialized")
-        return True
-    
-    print("\n🚗 Creating default parking slots...")
-    
-    # Create 50 parking slots
-    slots = []
-    for i in range(1, 51):
-        slot = {
-            'slot_number': f'A{i:02d}',
-            'status': 'available',  # available, occupied, maintenance
-            'floor': 1 if i <= 25 else 2,
-            'type': 'regular',  # regular, handicapped, vip
-            'hourly_rate': 50.0
+    # Trichy locations
+    parking_data = [
+        {
+            'title': 'Secure 2-Wheeler Parking near Srirangam Temple',
+            'description': 'Covered parking space for 2-wheelers. Located near the famous Srirangam Temple. Safe and secure with 24/7 CCTV surveillance.',
+            'address': 'Near Srirangam Temple, Srirangam, Trichy',
+            'latitude': 10.8650,
+            'longitude': 78.6936,
+            'vehicle_type': '2-wheeler',
+            'price_per_hour': 10.0,
+            'total_hours': 10,
+            'features': ['CCTV', 'Covered', '24/7 Access']
+        },
+        {
+            'title': 'Car Parking at Thillai Nagar Main Road',
+            'description': 'Spacious parking for cars near Thillai Nagar shopping area. Easy access to main road.',
+            'address': 'Thillai Nagar Main Road, Trichy',
+            'latitude': 10.8055,
+            'longitude': 78.6856,
+            'vehicle_type': '4-wheeler',
+            'price_per_hour': 30.0,
+            'total_hours': 12,
+            'features': ['Spacious', 'Main Road', 'Well-lit']
+        },
+        {
+            'title': 'Multi-Vehicle Parking near Railway Station',
+            'description': 'Large parking area for both 2-wheelers and 4-wheelers. Very close to Trichy Junction railway station.',
+            'address': 'Near Trichy Junction, Cantonment, Trichy',
+            'latitude': 10.8225,
+            'longitude': 78.6867,
+            'vehicle_type': 'both',
+            'price_per_hour': 20.0,
+            'total_hours': 24,
+            'features': ['Near Station', 'Security', 'Large Space']
+        },
+        {
+            'title': 'Bike Parking at K.K. Nagar Market',
+            'description': 'Convenient parking for bikes near K.K. Nagar market area. Ideal for shopping trips.',
+            'address': 'K.K. Nagar Market, Trichy',
+            'latitude': 10.7671,
+            'longitude': 78.7005,
+            'vehicle_type': '2-wheeler',
+            'price_per_hour': 8.0,
+            'total_hours': 8,
+            'features': ['Market Area', 'Convenient', 'Affordable']
         }
-        slots.append(slot)
+    ]
     
-    # Add some VIP slots
-    for i in range(51, 56):
-        slot = {
-            'slot_number': f'V{i-50:02d}',
-            'status': 'available',
-            'floor': 1,
-            'type': 'vip',
-            'hourly_rate': 100.0
-        }
-        slots.append(slot)
+    # Get host users
+    host_users = list(db.db.users.find({'role': 'host'}))
     
-    # Add handicapped slots
-    for i in range(56, 61):
-        slot = {
-            'slot_number': f'H{i-55:02d}',
-            'status': 'available',
-            'floor': 1,
-            'type': 'handicapped',
-            'hourly_rate': 40.0
-        }
-        slots.append(slot)
+    if not host_users:
+        print("No host users found! Please create host users first.")
+        return
     
-    try:
-        result = slots_collection.insert_many(slots)
-        print(f"  ✓ Created {len(result.inserted_ids)} parking slots")
-        return True
-    except Exception as e:
-        print(f"  ✗ Error creating slots: {e}")
-        return False
+    for i, data in enumerate(parking_data):
+        # Use different hosts
+        owner_id = str(host_users[i % len(host_users)]['_id'])
+        
+        parking = ParkingSpace(
+            owner_id=owner_id,
+            title=data['title'],
+            description=data['description'],
+            address=data['address'],
+            location={
+                'type': 'Point',
+                'coordinates': [data['longitude'], data['latitude']]
+            },
+            vehicle_type=data['vehicle_type'],
+            price_per_hour=data['price_per_hour'],
+            total_hours=data['total_hours']
+        )
+        parking.features = data['features']
+        parking.status = 'approved'  # Pre-approve for testing
+        parking.availability_start = datetime.utcnow()
+        parking.availability_end = datetime.utcnow() + timedelta(days=30)
+        
+        result = db.db.parking_spaces.insert_one(parking.to_dict())
+        print(f"✅ Created: {data['title']}")
+        print(f"   Location: {data['address']}")
+        print(f"   Price: ₹{data['price_per_hour']}/hour")
 
-def create_test_user():
-    """Create a test user account"""
-    import bcrypt
+def display_summary():
+    """Display setup summary"""
+    print("\n" + "="*60)
+    print("SETUP COMPLETE!")
+    print("="*60)
     
-    database = db.get_db()
+    # Count documents
+    users = db.db.users.count_documents({})
+    parking = db.db.parking_spaces.count_documents({})
     
-    if database is None:
-        return False
+    print(f"\n📊 Database Summary:")
+    print(f"   Total Users: {users}")
+    print(f"   Total Parking Spaces: {parking}")
     
-    users_collection = database['users']
+    print(f"\n🔐 Test Accounts:")
+    print(f"   Admin: admin@parking.com / admin123")
+    print(f"   Host: rajesh@example.com / password123")
+    print(f"   Driver: priya@example.com / password123")
     
-    # Check if test user exists
-    if users_collection.find_one({'email': 'test@parking.com'}):
-        print("\n✓ Test user already exists")
-        return True
+    print(f"\n🚀 Next Steps:")
+    print(f"   1. Run: python app.py")
+    print(f"   2. Open: http://localhost:5000")
+    print(f"   3. Test the API using the frontend or Postman")
     
-    print("\n👤 Creating test user...")
-    
-    test_user = {
-        'username': 'testuser',
-        'email': 'test@parking.com',
-        'password': bcrypt.hashpw('test123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        'full_name': 'Test User',
-        'phone': '+1234567890',
-        'vehicle_number': 'TN01AB1234',
-        'role': 'user',
-        'created_at': None
-    }
-    
-    try:
-        from datetime import datetime
-        test_user['created_at'] = datetime.utcnow()
-        users_collection.insert_one(test_user)
-        print("  ✓ Test user created:")
-        print("    Email: test@parking.com")
-        print("    Password: test123")
-        return True
-    except Exception as e:
-        print(f"  ✗ Error creating test user: {e}")
-        return False
+    print(f"\n📝 Documentation:")
+    print(f"   See README.md for API documentation")
+    print("="*60)
 
 def main():
     """Main setup function"""
-    print("=" * 60)
-    print("  PARKING MANAGEMENT SYSTEM - DATABASE SETUP")
-    print("=" * 60)
+    print("\n" + "="*60)
+    print("P2P PARKING SYSTEM - SETUP")
+    print("="*60)
     
-    # Try to connect to database
-    if not db.connect():
-        print("\n❌ Setup failed: Could not connect to MongoDB")
+    try:
+        # Test database connection
+        print("\nTesting database connection...")
+        db.client.server_info()
+        print("✅ Database connected successfully!")
+        
+        # Create admin
+        create_admin_user()
+        
+        # Create sample users
+        user_ids = create_sample_users()
+        
+        # Create sample parking spaces
+        create_sample_parking(user_ids)
+        
+        # Display summary
+        display_summary()
+        
+    except Exception as e:
+        print(f"\n❌ Setup failed: {str(e)}")
         print("\nPlease ensure MongoDB is running:")
-        print("  - Install: sudo apt install mongodb")
-        print("  - Start: sudo systemctl start mongodb")
-        print("  - Status: sudo systemctl status mongodb")
-        return 1
-    
-    # Create collections and indexes
-    if not create_collections():
-        print("\n❌ Setup failed: Could not create collections")
-        return 1
-    
-    # Create default parking slots
-    if not create_default_slots():
-        print("\n⚠ Warning: Could not create default slots")
-    
-    # Create test user
-    if not create_test_user():
-        print("\n⚠ Warning: Could not create test user")
-    
-    print("\n" + "=" * 60)
-    print("  ✅ SETUP COMPLETED SUCCESSFULLY!")
-    print("=" * 60)
-    print("\nYou can now start the application:")
-    print("  python app.py")
-    print("\nAccess the web interface at:")
-    print("  http://localhost:5000")
-    print()
-    
-    return 0
+        print("   sudo systemctl start mongodb")
+        sys.exit(1)
 
 if __name__ == '__main__':
-    sys.exit(main())
+    main()

@@ -1,91 +1,99 @@
-from pymongo import MongoClient, GEOSPHERE
-from config import Config
+from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo.errors import CollectionInvalid
+import os
+from dotenv import load_dotenv
+from datetime import datetime
+
+load_dotenv()
 
 class Database:
     def __init__(self):
-        self.client = MongoClient(Config.MONGO_URI)
-        self.db = self.client.parking_system
-        
-        # Collections
-        self.users = self.db.users
-        self.parkings = self.db.parkings
-        self.bookings = self.db.bookings
-        self.transactions = self.db.transactions
-        self.messages = self.db.messages
-        self.notifications = self.db.notifications
-        
-        # Create indexes
-        self._create_indexes()
+        self.client = MongoClient(os.getenv('MONGO_URI'))
+        self.db = self.client[os.getenv('DB_NAME')]
+        self.initialize_collections()
     
-    def _create_indexes(self):
-        """Create database indexes for better performance"""
+    def initialize_collections(self):
+        """Initialize collections and create indexes"""
         
-        # Users indexes
-        self.users.create_index('email', unique=True)
-        self.users.create_index('phone', unique=True)
-        self.users.create_index('role')
-        
-        # Parkings indexes
-        self.parkings.create_index([('location', GEOSPHERE)])  # Geospatial index
-        self.parkings.create_index('city')
-        self.parkings.create_index('status')
-        self.parkings.create_index('host_id')
-        self.parkings.create_index('vehicle_type')
-        self.parkings.create_index('is_available')
-        self.parkings.create_index([
-            ('city', 1),
-            ('vehicle_type', 1),
-            ('status', 1),
-            ('is_available', 1)
-        ])
-        
-        # Bookings indexes
-        self.bookings.create_index('driver_id')
-        self.bookings.create_index('host_id')
-        self.bookings.create_index('parking_id')
-        self.bookings.create_index('status')
-        self.bookings.create_index('start_time')
-        self.bookings.create_index('end_time')
-        
-        # Transactions indexes
-        self.transactions.create_index('user_id')
-        self.transactions.create_index('booking_id')
-        self.transactions.create_index('status')
-        self.transactions.create_index('type')
-        
-        # Messages indexes
-        self.messages.create_index('booking_id')
-        self.messages.create_index('sender_id')
-        self.messages.create_index('created_at')
-        
-        # Notifications indexes
-        self.notifications.create_index('user_id')
-        self.notifications.create_index('is_read')
-        self.notifications.create_index('created_at')
-    
-    def create_admin_user(self, email, password, name, phone):
-        """Create an admin user"""
-        from werkzeug.security import generate_password_hash
-        from datetime import datetime
-        
-        admin = {
-            'name': name,
-            'email': email,
-            'password': generate_password_hash(password),
-            'phone': phone,
-            'role': 'admin',
-            'wallet_balance': 0,
-            'created_at': datetime.utcnow(),
-            'is_verified': True
-        }
-        
+        # Users Collection
         try:
-            result = self.users.insert_one(admin)
-            print(f"Admin user created with ID: {result.inserted_id}")
-            return result.inserted_id
-        except Exception as e:
-            print(f"Error creating admin user: {e}")
-            return None
+            self.db.create_collection('users')
+        except CollectionInvalid:
+            pass
+        
+        self.db.users.create_index([('email', ASCENDING)], unique=True)
+        self.db.users.create_index([('phone', ASCENDING)])
+        
+        # Parking Spaces Collection
+        try:
+            self.db.create_collection('parking_spaces')
+        except CollectionInvalid:
+            pass
+        
+        self.db.parking_spaces.create_index([('location', '2dsphere')])
+        self.db.parking_spaces.create_index([('owner_id', ASCENDING)])
+        self.db.parking_spaces.create_index([('status', ASCENDING)])
+        
+        # Bookings Collection
+        try:
+            self.db.create_collection('bookings')
+        except CollectionInvalid:
+            pass
+        
+        self.db.bookings.create_index([('driver_id', ASCENDING)])
+        self.db.bookings.create_index([('parking_id', ASCENDING)])
+        self.db.bookings.create_index([('status', ASCENDING)])
+        self.db.bookings.create_index([('start_time', ASCENDING)])
+        
+        # Wallets Collection
+        try:
+            self.db.create_collection('wallets')
+        except CollectionInvalid:
+            pass
+        
+        self.db.wallets.create_index([('user_id', ASCENDING)], unique=True)
+        
+        # Transactions Collection
+        try:
+            self.db.create_collection('transactions')
+        except CollectionInvalid:
+            pass
+        
+        self.db.transactions.create_index([('user_id', ASCENDING)])
+        self.db.transactions.create_index([('created_at', DESCENDING)])
+        
+        # Messages Collection
+        try:
+            self.db.create_collection('messages')
+        except CollectionInvalid:
+            pass
+        
+        self.db.messages.create_index([('sender_id', ASCENDING)])
+        self.db.messages.create_index([('receiver_id', ASCENDING)])
+        self.db.messages.create_index([('booking_id', ASCENDING)])
+        
+        # Reviews Collection
+        try:
+            self.db.create_collection('reviews')
+        except CollectionInvalid:
+            pass
+        
+        self.db.reviews.create_index([('parking_id', ASCENDING)])
+        self.db.reviews.create_index([('reviewer_id', ASCENDING)])
+        
+        # Notifications Collection
+        try:
+            self.db.create_collection('notifications')
+        except CollectionInvalid:
+            pass
+        
+        self.db.notifications.create_index([('user_id', ASCENDING)])
+        self.db.notifications.create_index([('created_at', DESCENDING)])
+        
+        print("Database initialized successfully!")
+    
+    def get_collection(self, name):
+        return self.db[name]
 
-# Initialize database connection
-db_instance = Database()
+# Initialize database instance
+db = Database()

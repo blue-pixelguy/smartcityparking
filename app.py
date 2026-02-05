@@ -1,74 +1,117 @@
-from flask import Flask, render_template, jsonify, request
+import os
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
-import os
 
 # Load environment variables
 load_dotenv()
 
-# Import routes
-from routes import auth, slots, bookings, users
+# Import database to initialize
+from database import db
 
-# Initialize Flask app
+# Import routes
+from routes_auth import auth_bp
+from routes_parking import parking_bp
+from routes_booking import booking_bp
+from routes_wallet import wallet_bp
+from routes_message_review import message_bp, review_bp
+from routes_admin_notification import admin_bp, notification_bp
+
+# Create Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+
+# Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_FILE_SIZE', 5242880))
 
 # Enable CORS
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+# Create upload folder if doesn't exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Register blueprints
-app.register_blueprint(auth.bp, url_prefix='/api/auth')
-app.register_blueprint(slots.bp, url_prefix='/api/slots')
-app.register_blueprint(bookings.bp, url_prefix='/api/bookings')
-app.register_blueprint(users.bp, url_prefix='/api/users')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(parking_bp, url_prefix='/api/parking')
+app.register_blueprint(booking_bp, url_prefix='/api/booking')
+app.register_blueprint(wallet_bp, url_prefix='/api/wallet')
+app.register_blueprint(message_bp, url_prefix='/api/messages')
+app.register_blueprint(review_bp, url_prefix='/api/reviews')
+app.register_blueprint(admin_bp, url_prefix='/api/admin')
+app.register_blueprint(notification_bp, url_prefix='/api/notifications')
 
-# Routes
+# Root route
 @app.route('/')
 def index():
-    """Homepage"""
-    return render_template('index.html')
-
-@app.route('/dashboard')
-def dashboard():
-    """Dashboard page"""
-    return render_template('dashboard.html')
-
-# API Status endpoint
-@app.route('/api/status')
-def api_status():
-    """Check API status"""
-    from config.database import db
-    
-    db_status = "connected" if db.get_db() is not None else "disconnected"
-    
     return jsonify({
-        'status': 'ok',
-        'message': 'Parking Management API is running',
-        'database': db_status,
-        'version': '1.0.0'
+        'message': 'P2P Parking System API',
+        'version': '1.0.0',
+        'status': 'running'
     })
+
+# Health check route
+@app.route('/health')
+def health_check():
+    try:
+        # Check database connection
+        db.client.server_info()
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'database': 'disconnected',
+            'error': str(e)
+        }), 500
+
+# Serve uploaded files
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Not found'}), 404
+    return jsonify({'error': 'Endpoint not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
+@app.errorhandler(413)
+def file_too_large(error):
+    return jsonify({'error': 'File too large'}), 413
+
 if __name__ == '__main__':
-    host = os.getenv('HOST', '0.0.0.0')
-    port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('DEBUG', 'True').lower() == 'true'
+    print("=" * 50)
+    print("P2P Parking System Starting...")
+    print("=" * 50)
+    print(f"Environment: {os.getenv('FLASK_ENV')}")
+    print(f"Database: {os.getenv('DB_NAME')}")
+    print(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+    print("=" * 50)
+    print("\nAPI Endpoints:")
+    print("Authentication: /api/auth/*")
+    print("Parking: /api/parking/*")
+    print("Booking: /api/booking/*")
+    print("Wallet: /api/wallet/*")
+    print("Messages: /api/messages/*")
+    print("Reviews: /api/reviews/*")
+    print("Admin: /api/admin/*")
+    print("Notifications: /api/notifications/*")
+    print("=" * 50)
     
-    print('=' * 60)
-    print('  PARKING MANAGEMENT SYSTEM')
-    print('=' * 60)
-    print(f'\n🚀 Server starting...')
-    print(f'   URL: http://localhost:{port}')
-    print(f'   API: http://localhost:{port}/api/status')
-    print(f'   Debug: {debug}')
-    print('\n' + '=' * 60 + '\n')
-    
-    app.run(host=host, port=port, debug=debug)
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=os.getenv('FLASK_DEBUG', 'True') == 'True'
+    )
