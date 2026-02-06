@@ -1,110 +1,106 @@
 #!/usr/bin/env python3
 """
-Simple diagnostic script to test if the app can start
-Run this on Render shell to see what's failing
+Comprehensive diagnostic script for P2P Parking System
+Run this to identify deployment issues
 """
 import sys
-
-print("=" * 60)
-print("DIAGNOSTIC CHECK")
-print("=" * 60)
-
-# Test 1: Basic imports
-print("\n1. Testing basic imports...")
-try:
-    import flask
-    print("✅ Flask imported")
-except Exception as e:
-    print(f"❌ Flask failed: {e}")
-    sys.exit(1)
-
-try:
-    import bcrypt
-    print("✅ bcrypt imported")
-except Exception as e:
-    print(f"❌ bcrypt failed: {e}")
-    print("   Fix: Add bcrypt==4.1.2 to requirements.txt")
-    sys.exit(1)
-
-try:
-    import pymongo
-    print("✅ pymongo imported")
-except Exception as e:
-    print(f"❌ pymongo failed: {e}")
-    sys.exit(1)
-
-# Test 2: Environment variables
-print("\n2. Checking environment variables...")
 import os
+
+print("=" * 80)
+print("P2P PARKING - DIAGNOSTIC CHECK")
+print("=" * 80)
+
+# Test 1: Python version
+print("\n1. Python Version Check...")
+print(f"   Version: {sys.version}")
+if sys.version_info >= (3, 9):
+    print("   ✅ Python version OK")
+else:
+    print("   ⚠️  Python 3.9+ recommended")
+
+# Test 2: Critical imports
+print("\n2. Testing Critical Imports...")
+imports = {
+    'flask': 'Flask==3.0.0',
+    'bcrypt': 'bcrypt==4.1.2',
+    'pymongo': 'pymongo==4.6.1',
+    'jwt': 'PyJWT==2.8.0',
+    'dotenv': 'python-dotenv==1.0.0'
+}
+
+failed = []
+for module, package in imports.items():
+    try:
+        __import__(module)
+        print(f"   ✅ {module} OK")
+    except Exception as e:
+        print(f"   ❌ {module} FAILED: {e}")
+        failed.append(package)
+
+if failed:
+    print(f"\n   ❌ Install missing: pip install {' '.join(failed)}")
+    sys.exit(1)
+
+# Test 3: Environment variables
+print("\n3. Environment Variables...")
 from dotenv import load_dotenv
 load_dotenv()
 
-critical_vars = {
+vars_check = {
     'SECRET_KEY': os.getenv('SECRET_KEY'),
     'JWT_SECRET': os.getenv('JWT_SECRET'),
     'MONGO_URI': os.getenv('MONGO_URI'),
-    'DB_NAME': os.getenv('DB_NAME')
+    'DB_NAME': os.getenv('DB_NAME'),
 }
 
-for var, value in critical_vars.items():
-    if value:
-        print(f"✅ {var} is set")
+for var, val in vars_check.items():
+    if val:
+        print(f"   ✅ {var} is set")
     else:
-        print(f"⚠️  {var} is NOT set (will use default)")
+        print(f"   ⚠️  {var} NOT set")
 
-# Test 3: Try importing app modules
-print("\n3. Testing app modules...")
-try:
-    from models import User
-    print("✅ models.py imported")
-except Exception as e:
-    print(f"❌ models.py failed: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+# Test 4: Application modules
+print("\n4. Application Modules...")
+modules = [
+    ('models', 'User'),
+    ('auth', 'create_token'),
+    ('database', 'db'),
+]
 
-try:
-    from auth import create_token
-    print("✅ auth.py imported")
-except Exception as e:
-    print(f"❌ auth.py failed: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+for mod_name, obj_name in modules:
+    try:
+        mod = __import__(mod_name)
+        getattr(mod, obj_name)
+        print(f"   ✅ {mod_name}.{obj_name} OK")
+    except Exception as e:
+        print(f"   ❌ {mod_name} FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
-try:
-    from database import db
-    print("✅ database.py imported")
-except Exception as e:
-    print(f"❌ database.py failed: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
-
-# Test 4: Try creating Flask app
-print("\n4. Testing Flask app creation...")
+# Test 5: Flask app
+print("\n5. Flask Application...")
 try:
     from app import app
-    print("✅ Flask app created successfully")
-    print(f"   Blueprints: {len(app.blueprints)}")
+    print(f"   ✅ App created ({len(app.blueprints)} blueprints)")
 except Exception as e:
-    print(f"❌ Flask app failed: {e}")
+    print(f"   ❌ App creation FAILED: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
-# Test 5: Database connection
-print("\n5. Testing database connection...")
+# Test 6: Database
+print("\n6. Database Connection...")
 try:
+    from database import db
     db.client.server_info()
-    print("✅ Database connected")
+    print("   ✅ Database connected")
 except Exception as e:
-    print(f"⚠️  Database connection failed: {e}")
-    print("   This is OK if you haven't set MONGO_URI yet")
+    print(f"   ⚠️  Database failed: {e}")
+    print("   (OK if MONGO_URI not set yet)")
 
-print("\n" + "=" * 60)
-print("✅ ALL CRITICAL CHECKS PASSED!")
-print("=" * 60)
-print("\nYour app should be able to start.")
-print("If it still fails, check the Render logs for details.")
-print("=" * 60)
+print("\n" + "=" * 80)
+print("✅ DIAGNOSTIC COMPLETE")
+print("=" * 80)
+print("\nTo start: python app.py")
+print("=" * 80)
