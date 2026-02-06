@@ -6,7 +6,6 @@ PyJWT==2.8.0
 Werkzeug==3.0.1
 python-dotenv==1.0.0
 requests==2.31.0
-bcrypt==4.1.2
 razorpay==1.4.1
 dnspython==2.4.2
 gunicorn==21.2.0
