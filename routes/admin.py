@@ -39,7 +39,18 @@ def get_dashboard_stats():
         # Count parking spaces by status
         total_parking = database.count_documents('parking_spaces', {})
         pending_parking = database.count_documents('parking_spaces', {'status': 'pending'})
-        approved_parking = database.count_documents('parking_spaces', {'status': 'approved'})
+        
+        # Count ACTIVE approved parking (not expired)
+        # Get all approved parking and filter by expiry date
+        approved_parking_all = database.count_documents('parking_spaces', {'status': 'approved'})
+        
+        # Count only non-expired approved listings
+        now = datetime.utcnow()
+        active_approved = database.count_documents('parking_spaces', {
+            'status': 'approved',
+            'available_to': {'$gte': now}  # Only count if available_to is in the future
+        })
+        
         rejected_parking = database.count_documents('parking_spaces', {'status': 'rejected'})
         
         # Count bookings by status
@@ -64,8 +75,9 @@ def get_dashboard_stats():
             'parking_spaces': {
                 'total': total_parking,
                 'pending': pending_parking,
-                'approved': approved_parking,
-                'rejected': rejected_parking
+                'approved': active_approved,  # Only non-expired
+                'rejected': rejected_parking,
+                'expired': approved_parking_all - active_approved  # Count of expired
             },
             'bookings': {
                 'total': total_bookings,
@@ -162,6 +174,48 @@ def reject_parking(parking_id):
     except Exception as e:
         return jsonify({'error': 'Failed to reject parking space', 'details': str(e)}), 500
 
+@admin_bp.route('/parking/all', methods=['GET'])
+@admin_required
+def get_all_parking():
+    """Get all parking spaces"""
+    try:
+        # Get all parking spaces
+        all_parking = database.find_many(
+            'parking_spaces',
+            {},
+            sort=[('created_at', -1)],
+            limit=100
+        )
+        
+        # Get owner details for each
+        parking_with_owners = []
+        for parking in all_parking:
+            try:
+                owner = User.get_by_id(database, str(parking['owner_id']))
+                if owner:
+                    parking_dict = ParkingSpace.to_dict(parking)
+                    parking_dict['owner'] = {
+                        'id': str(owner['_id']),
+                        'name': owner['name'],
+                        'email': owner['email'],
+                        'phone': owner.get('phone')
+                    }
+                    parking_with_owners.append(parking_dict)
+            except Exception as e:
+                print(f"Error processing parking {parking.get('_id')}: {e}")
+                continue
+        
+        return jsonify({
+            'count': len(parking_with_owners),
+            'parking_spaces': parking_with_owners
+        }), 200
+        
+    except Exception as e:
+        print(f"Get all parking error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get parking spaces', 'details': str(e)}), 500
+
 @admin_bp.route('/users', methods=['GET'])
 @admin_required
 def get_all_users():
@@ -180,6 +234,53 @@ def get_all_users():
         
     except Exception as e:
         return jsonify({'error': 'Failed to get users', 'details': str(e)}), 500
+
+@admin_bp.route('/users/<user_id>', methods=['GET'])
+@admin_required
+def get_user_details(user_id):
+    """Get detailed user information with stats"""
+    try:
+        user = User.get_by_id(database, user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get user stats
+        parking_count = database.count_documents('parking_spaces', {'owner_id': ObjectId(user_id)})
+        bookings_made = database.count_documents('bookings', {'user_id': ObjectId(user_id)})
+        bookings_received = database.count_documents('bookings', {'owner_id': ObjectId(user_id)})
+        
+        # Calculate total spent (as renter)
+        spent_pipeline = [
+            {'$match': {'user_id': ObjectId(user_id), 'status': 'completed'}},
+            {'$group': {'_id': None, 'total': {'$sum': '$total_price'}}}
+        ]
+        spent_result = database.aggregate('bookings', spent_pipeline)
+        total_spent = spent_result[0]['total'] if spent_result else 0
+        
+        # Calculate total earned (as owner)
+        earned_pipeline = [
+            {'$match': {'owner_id': ObjectId(user_id), 'status': 'completed'}},
+            {'$group': {'_id': None, 'total': {'$sum': '$total_price'}}}
+        ]
+        earned_result = database.aggregate('bookings', earned_pipeline)
+        total_earned = earned_result[0]['total'] if earned_result else 0
+        
+        return jsonify({
+            'user': User.to_dict(user),
+            'stats': {
+                'parking_spaces': parking_count,
+                'bookings_made': bookings_made,
+                'bookings_received': bookings_received,
+                'total_spent': float(total_spent),
+                'total_earned': float(total_earned)
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Get user details error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get user details', 'details': str(e)}), 500
 
 @admin_bp.route('/users/<user_id>/toggle-status', methods=['POST'])
 @admin_required
@@ -264,6 +365,47 @@ def get_all_bookings():
         import traceback
         traceback.print_exc()
         return jsonify({'error': 'Failed to get bookings', 'details': str(e)}), 500
+
+@admin_bp.route('/bookings/<booking_id>', methods=['GET'])
+@admin_required
+def get_booking_details(booking_id):
+    """Get detailed booking information"""
+    try:
+        booking = Booking.get_by_id(database, booking_id)
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        
+        # Get related data
+        parking = ParkingSpace.get_by_id(database, str(booking['parking_id']))
+        user = User.get_by_id(database, str(booking['user_id']))
+        owner = User.get_by_id(database, str(booking['owner_id']))
+        
+        booking_dict = Booking.to_dict(booking)
+        booking_dict['parking'] = {
+            'id': str(parking['_id']),
+            'title': parking['title'],
+            'address': parking['address']
+        }
+        booking_dict['user'] = {
+            'id': str(user['_id']),
+            'name': user['name'],
+            'email': user['email']
+        }
+        booking_dict['owner'] = {
+            'id': str(owner['_id']),
+            'name': owner['name'],
+            'email': owner['email']
+        }
+        
+        return jsonify({
+            'booking': booking_dict
+        }), 200
+        
+    except Exception as e:
+        print(f"Get booking details error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to get booking details', 'details': str(e)}), 500
 
 @admin_bp.route('/resolve-issue', methods=['POST'])
 @admin_required
