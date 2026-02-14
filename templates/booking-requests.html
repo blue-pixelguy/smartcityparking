@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Requests - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .requests-container {
+            max-width: 1200px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #718096;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .booking-request {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+        }
+
+        .booking-request:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+
+        .request-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .request-id {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-pending {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        .status-confirmed {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .status-completed {
+            background: #e8f4fd;
+            color: #3498db;
+        }
+
+        .request-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: #f7fafc;
+            border-radius: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .detail-value i {
+            color: #667eea;
+            margin-right: 0.5rem;
+        }
+
+        .customer-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .customer-info h4 {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .customer-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .btn-accept {
+            flex: 1;
+            padding: 1rem;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-accept:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-reject {
+            flex: 1;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-reject:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(245, 101, 101, 0.3);
+        }
+
+        .btn-contact {
+            flex: 1;
+            padding: 1rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-contact:hover {
+            background: #5568d3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #718096;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #cbd5e0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-parking"></i>
+                <span>SmartParking</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="/logout" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="requests-container">
+        <div class="page-header">
+            <h1><i class="fas fa-clipboard-list"></i> Booking Requests</h1>
+            <p>Manage bookings for your parking spaces</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('pending')">
+                <i class="fas fa-clock"></i> Pending
+            </button>
+            <button class="tab" onclick="switchTab('confirmed')">
+                <i class="fas fa-check-circle"></i> Confirmed
+            </button>
+            <button class="tab" onclick="switchTab('completed')">
+                <i class="fas fa-flag-checkered"></i> Completed
+            </button>
+        </div>
+
+        <!-- Booking Requests List -->
+        <div id="requestsList">
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>Loading booking requests...</h3>
+                <p>Please wait</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'pending';
+
+        window.onload = function() {
+            loadBookingRequests('pending');
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab styles
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Load requests for selected tab
+            loadBookingRequests(tab);
+        }
+
+        async function loadBookingRequests(status) {
+            const token = localStorage.getItem('token');
+            const requestsList = document.getElementById('requestsList');
+
+            try {
+                const statusMap = {
+                    'pending': 'pending',
+                    'confirmed': 'confirmed',
+                    'completed': 'completed'
+                };
+
+                const response = await fetch(`/api/booking/received-bookings?status=${statusMap[status]}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.bookings && data.bookings.length > 0) {
+                    displayBookingRequests(data.bookings, status);
+                } else {
+                    showEmptyState(status);
+                }
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                requestsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Error loading bookings</h3>
+                        <p>Please try again later</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayBookingRequests(bookings, status) {
+            const requestsList = document.getElementById('requestsList');
+            let html = '';
+
+            bookings.forEach(booking => {
+                const statusClass = `status-${booking.status}`;
+                const startDate = new Date(booking.start_time).toLocaleString();
+                const endDate = new Date(booking.end_time).toLocaleString();
+
+                html += `
+                    <div class="booking-request">
+                        <div class="request-header">
+                            <div>
+                                <div class="request-title">${booking.parking.title}</div>
+                                <div class="request-id">Booking ID: #${booking.id.substring(0, 8)}</div>
+                                ${booking.parking.location_link ? `
+                                    <div style="margin-top: 0.5rem;">
+                                        <a href="${booking.parking.location_link}" target="_blank" style="color: #48bb78; text-decoration: none; font-size: 0.9rem;">
+                                            <i class="fas fa-map-marked-alt"></i> View Location on Maps
+                                        </a>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="status-badge ${statusClass}">
+                                <i class="fas fa-circle"></i> ${booking.status.toUpperCase()}
+                            </div>
+                        </div>
+
+                        <div class="customer-info">
+                            <h4><i class="fas fa-user"></i> Customer Details</h4>
+                            <div class="customer-row">
+                                <span>Name:</span>
+                                <span><strong>${booking.user_name || booking.user.name}</strong></span>
+                            </div>
+                            <div class="customer-row">
+                                <span>Phone:</span>
+                                <span><strong>${booking.user_phone || booking.user.phone}</strong></span>
+                            </div>
+                            <div class="customer-row">
+                                <span>Vehicle:</span>
+                                <span><strong>${booking.vehicle_type} - ${booking.vehicle_number}</strong></span>
+                            </div>
+                        </div>
+
+                        <div class="request-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Start Time</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-calendar-check"></i>
+                                    ${startDate}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">End Time</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-calendar-times"></i>
+                                    ${endDate}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Duration</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-clock"></i>
+                                    ${booking.duration_hours} hours
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Total Amount</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-rupee-sign"></i>
+                                    ₹${booking.total_price}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Payment Method</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-wallet"></i>
+                                    ${booking.payment_method === 'cash' ? 'Cash (Receive at parking)' : 'UPI'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            ${status === 'pending' ? `
+                                <button class="btn-accept" onclick="acceptBooking('${booking.id}')">
+                                    <i class="fas fa-check"></i> Accept
+                                </button>
+                                <button class="btn-reject" onclick="rejectBooking('${booking.id}')">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            ` : ''}
+                            ${status === 'confirmed' ? `
+                                <button class="btn-contact" onclick="contactCustomer('${booking.user_phone || booking.user.phone}')">
+                                    <i class="fas fa-phone"></i> Contact Customer
+                                </button>
+                                <button class="btn-accept" onclick="confirmPayment('${booking.id}', '${booking.payment_method}')">
+                                    <i class="fas fa-check-circle"></i> ${booking.payment_method === 'cash' ? 'Received Cash' : 'Received UPI Payment'}
+                                </button>
+                            ` : ''}
+                            ${status === 'completed' ? `
+                                <button class="btn-contact">
+                                    <i class="fas fa-check-double"></i> Completed
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            requestsList.innerHTML = html;
+        }
+
+        function showEmptyState(status) {
+            const requestsList = document.getElementById('requestsList');
+            const messages = {
+                'pending': { icon: 'inbox', title: 'No pending requests', text: 'New booking requests will appear here' },
+                'confirmed': { icon: 'check-circle', title: 'No confirmed bookings', text: 'Accepted bookings will appear here' },
+                'completed': { icon: 'flag-checkered', title: 'No completed bookings', text: 'Your booking history will appear here' }
+            };
+
+            const msg = messages[status];
+            requestsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-${msg.icon}"></i>
+                    <h3>${msg.title}</h3>
+                    <p>${msg.text}</p>
+                </div>
+            `;
+        }
+
+        async function acceptBooking(bookingId) {
+            if (!confirm('Accept this booking request?')) return;
+
+            const token = localStorage.getItem('token');
+
+            try {
+                const response = await fetch(`/api/booking/${bookingId}/confirm`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Booking accepted successfully!');
+                    loadBookingRequests(currentTab);
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to accept booking');
+                }
+            } catch (error) {
+                console.error('Error accepting booking:', error);
+                alert('Failed to accept booking');
+            }
+        }
+
+        async function rejectBooking(bookingId) {
+            if (!confirm('Reject this booking request?')) return;
+
+            const token = localStorage.getItem('token');
+
+            try {
+                const response = await fetch(`/api/booking/${bookingId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Booking rejected');
+                    loadBookingRequests(currentTab);
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to reject booking');
+                }
+            } catch (error) {
+                console.error('Error rejecting booking:', error);
+                alert('Failed to reject booking');
+            }
+        }
+
+        function contactCustomer(phone) {
+            window.location.href = `tel:${phone}`;
+        }
+
+        async function confirmPayment(bookingId, paymentMethod) {
+            const methodText = paymentMethod === 'cash' ? 'cash payment' : 'UPI payment';
+            if (!confirm(`Confirm you have received ${methodText}?`)) return;
+
+            const token = localStorage.getItem('token');
+
+            try {
+                const response = await fetch(`/api/booking/${bookingId}/mark-paid`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        payment_reference: `${paymentMethod.toUpperCase()}-${Date.now()}`
+                    })
+                });
+
+                if (response.ok) {
+                    alert(`${methodText.charAt(0).toUpperCase() + methodText.slice(1)} confirmed! Booking is now active.`);
+                    loadBookingRequests(currentTab);
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to confirm payment');
+                }
+            } catch (error) {
+                console.error('Error confirming payment:', error);
+                alert('Failed to confirm payment');
+            }
+        }
+    </script>
+</body>
+</html>

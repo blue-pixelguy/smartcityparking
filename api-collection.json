@@ -1,0 +1,225 @@
+{
+  "info": {
+    "name": "Smart City Parking API",
+    "description": "Complete API collection for Smart City Parking System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\",\n  \"name\": \"John Doe\",\n  \"phone\": \"9876543210\",\n  \"role\": \"driver\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@test.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parking",
+      "item": [
+        {
+          "name": "Create Parking Space",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Secure Garage Parking\",\n  \"description\": \"Covered parking near metro\",\n  \"address\": \"123 Main St, Mumbai\",\n  \"latitude\": 19.0760,\n  \"longitude\": 72.8777,\n  \"vehicle_type\": \"both\",\n  \"price_per_hour\": 50,\n  \"total_hours\": 10,\n  \"available_from\": \"2024-02-06T00:00:00Z\",\n  \"available_to\": \"2024-02-16T23:59:59Z\",\n  \"total_spaces\": 1,\n  \"amenities\": [\"covered\", \"security\"],\n  \"instructions\": \"Call upon arrival\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/parking/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "create"]
+            }
+          }
+        },
+        {
+          "name": "Search Parking",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/parking/search?latitude=19.0760&longitude=72.8777&radius=5000",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "search"],
+              "query": [
+                {"key": "latitude", "value": "19.0760"},
+                {"key": "longitude", "value": "72.8777"},
+                {"key": "radius", "value": "5000"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking",
+      "item": [
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parking_id\": \"PARKING_ID_HERE\",\n  \"start_time\": \"2024-02-06T10:00:00Z\",\n  \"end_time\": \"2024-02-06T18:00:00Z\",\n  \"vehicle_number\": \"MH02AB1234\",\n  \"vehicle_type\": \"4-wheeler\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/booking/create",
+              "host": ["{{base_url}}"],
+              "path": ["api", "booking", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get My Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/booking/my-bookings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "booking", "my-bookings"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/wallet/balance",
+              "host": ["{{base_url}}"],
+              "path": ["api", "wallet", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Add Money",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000,\n  \"description\": \"Test wallet recharge\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/wallet/add-money",
+              "host": ["{{base_url}}"],
+              "path": ["api", "wallet", "add-money"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

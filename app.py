@@ -1,121 +1,135 @@
-import os
-from flask import Flask, jsonify, send_from_directory
+"""
+Smart City Parking System - Main Application
+A peer-to-peer parking marketplace for smart cities
+"""
+
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from pymongo import MongoClient
+from datetime import datetime
+import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-# Import database to initialize
-from database import db
+# Import configurations
+from config import Config
 
-# Import routes
-from routes_auth import auth_bp
-from routes_parking import parking_bp
-from routes_booking import booking_bp
-from routes_wallet import wallet_bp
-from routes_message_review import message_bp, review_bp
-from routes_admin_notification import admin_bp, notification_bp
+# Import blueprints
+from routes.auth import auth_bp
+from routes.parking import parking_bp
+from routes.booking import booking_bp
+from routes.payment import payment_bp
+from routes.chat import chat_bp
+from routes.admin import admin_bp
+from routes.user import user_bp
+from routes.wallet import wallet_bp
+from routes.review import review_bp
+from routes.web import web_bp
 
-# Create Flask app
-app = Flask(__name__)
+# Import database models
+from models.database import db
 
-# Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-please-change-in-production')
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_FILE_SIZE', 5242880))
-
-# Enable CORS
-CORS(app, resources={
-    r"/api/*": {
-        "origins": "*",
-        "methods": ["GET", "POST", "PUT", "DELETE"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
-
-# Create upload folder if doesn't exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-# Register blueprints
-app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(parking_bp, url_prefix='/api/parking')
-app.register_blueprint(booking_bp, url_prefix='/api/booking')
-app.register_blueprint(wallet_bp, url_prefix='/api/wallet')
-app.register_blueprint(message_bp, url_prefix='/api/messages')
-app.register_blueprint(review_bp, url_prefix='/api/reviews')
-app.register_blueprint(admin_bp, url_prefix='/api/admin')
-app.register_blueprint(notification_bp, url_prefix='/api/notifications')
-
-# Root route
-@app.route('/')
-def index():
-    return jsonify({
-        'message': 'P2P Parking System API',
-        'version': '1.0.0',
-        'status': 'running'
+def create_app(config_class=Config):
+    """Application factory pattern"""
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+    
+    # Enable CORS with proper configuration
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "expose_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": False
+        }
     })
-
-# Health check route
-@app.route('/health')
-def health_check():
+    
+    # Initialize JWT
+    jwt = JWTManager(app)
+    
+    # Initialize MongoDB with better error handling
     try:
-        # Check database connection
-        db.client.server_info()
+        client = MongoClient(
+            app.config['MONGO_URI'],
+            serverSelectionTimeoutMS=5000,  # 5 second timeout
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000
+        )
+        # Test the connection
+        client.admin.command('ping')
+        app.db = client.get_database()
+        print("✅ MongoDB connection successful!")
+    except Exception as e:
+        print(f"⚠️  MongoDB connection failed: {e}")
+        print("App will start but database operations will fail.")
+        print("Please check your MONGO_URI in .env file")
+        # Create a dummy db object to prevent immediate crash
+        app.db = None
+    
+    # Initialize database helper
+    try:
+        if hasattr(app, 'db') and app.db is not None:
+            db.init_app(app)
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+    
+    # Create upload folder if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    
+    # Register blueprints
+    app.register_blueprint(web_bp)  # Web pages (no prefix)
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(parking_bp, url_prefix='/api/parking')
+    app.register_blueprint(booking_bp, url_prefix='/api/booking')
+    app.register_blueprint(payment_bp, url_prefix='/api/payment')
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+    app.register_blueprint(wallet_bp, url_prefix='/api/wallet')
+    app.register_blueprint(review_bp, url_prefix='/api/review')
+    
+    # Health check endpoint
+    @app.route('/health')
+    def health_check():
         return jsonify({
             'status': 'healthy',
-            'database': 'connected'
+            'timestamp': datetime.utcnow().isoformat(),
+            'service': 'Smart City Parking API'
         }), 200
-    except Exception as e:
+    
+    # Root API endpoint
+    @app.route('/api')
+    def api_index():
         return jsonify({
-            'status': 'unhealthy',
-            'database': 'disconnected',
-            'error': str(e)
-        }), 500
-
-# Serve uploaded files
-@app.route('/uploads/<path:filename>')
-def serve_upload(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# Error handlers
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
-@app.errorhandler(413)
-def file_too_large(error):
-    return jsonify({'error': 'File too large'}), 413
+            'message': 'Smart City Parking API',
+            'version': '1.0.0',
+            'endpoints': {
+                'auth': '/api/auth',
+                'parking': '/api/parking',
+                'booking': '/api/booking',
+                'payment': '/api/payment',
+                'chat': '/api/chat',
+                'admin': '/api/admin',
+                'user': '/api/user',
+                'wallet': '/api/wallet'
+            }
+        }), 200
+    
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({'error': 'Resource not found'}), 404
+    
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({'error': 'Internal server error'}), 500
+    
+    return app
 
 if __name__ == '__main__':
-    # Get port from environment variable for deployment platforms
-    port = int(os.getenv('PORT', 5000))
-    
-    print("=" * 50)
-    print("P2P Parking System Starting...")
-    print("=" * 50)
-    print(f"Environment: {os.getenv('FLASK_ENV', 'production')}")
-    print(f"Database: {os.getenv('DB_NAME', 'smartcityparking')}")
-    print(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
-    print(f"Port: {port}")
-    print("=" * 50)
-    print("\nAPI Endpoints:")
-    print("Authentication: /api/auth/*")
-    print("Parking: /api/parking/*")
-    print("Booking: /api/booking/*")
-    print("Wallet: /api/wallet/*")
-    print("Messages: /api/messages/*")
-    print("Reviews: /api/reviews/*")
-    print("Admin: /api/admin/*")
-    print("Notifications: /api/notifications/*")
-    print("=" * 50)
-    
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=os.getenv('FLASK_DEBUG', 'False') == 'True'
-    )
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000, debug=True)

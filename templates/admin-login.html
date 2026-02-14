@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem;">
+                    <i class="fas fa-shield-alt"></i> Admin
+                </div>
+                <h2>Admin Login</h2>
+                <p>Access the admin dashboard</p>
+            </div>
+
+            <div id="alertMessage" style="display: none;"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <div class="form-input-group">
+                        <i class="fas fa-user-shield"></i>
+                        <input type="text" class="form-control" id="username" placeholder="admin" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="form-input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" class="form-control" id="password" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin-top: 1rem;">
+                    <i class="fas fa-sign-in-alt"></i> Admin Login
+                </button>
+            </form>
+
+            <div class="auth-link">
+                <a href="/login">Regular user login</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                // Login via API
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Check if user is admin
+                    if (data.user.role === 'admin') {
+                        // Store admin token
+                        localStorage.setItem('adminToken', data.access_token);
+                        localStorage.setItem('admin', 'true');
+                        window.location.href = '/admin';
+                    } else {
+                        const alertMessage = document.getElementById('alertMessage');
+                        alertMessage.className = 'alert alert-error';
+                        alertMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Access denied. Admin privileges required.</span>';
+                        alertMessage.style.display = 'flex';
+                    }
+                } else {
+                    const alertMessage = document.getElementById('alertMessage');
+                    alertMessage.className = 'alert alert-error';
+                    alertMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>' + (data.error || 'Invalid credentials') + '</span>';
+                    alertMessage.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                const alertMessage = document.getElementById('alertMessage');
+                alertMessage.className = 'alert alert-error';
+                alertMessage.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Login failed. Please try again.</span>';
+                alertMessage.style.display = 'flex';
+            }
+        });
+    </script>
+</body>
+</html>

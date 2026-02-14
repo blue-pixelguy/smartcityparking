@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List Your Space - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .list-container {
+            max-width: 900px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .list-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .list-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .list-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #2d3748;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title i {
+            color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .image-upload {
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .image-upload:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .image-upload.has-image {
+            border-color: #48bb78;
+            background: #f0fdf4;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 1rem auto;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #cbd5e0;
+            margin-bottom: 1rem;
+        }
+
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .payment-option {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .payment-option:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .payment-option input[type="checkbox"] {
+            margin-right: 0.75rem;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .required {
+            color: #f56565;
+        }
+
+        .helper-text {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-parking"></i>
+                <span>SmartParking</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="list-container">
+        <div class="list-card">
+            <div class="list-header">
+                <h1><i class="fas fa-plus-circle"></i> List Your Parking Space</h1>
+                <p>Earn money by renting out your parking space</p>
+            </div>
+
+            <form id="listingForm" onsubmit="submitListing(event)">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Basic Information
+                    </h3>
+
+                    <div class="form-group">
+                        <label>Parking Title <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="title" required placeholder="e.g., Secure Garage Parking near Metro">
+                        <div class="helper-text">Give your parking space an attractive title</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="form-textarea" id="description" placeholder="Describe your parking space, amenities, and any special instructions..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Owner Details -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-user"></i>
+                        Owner Details
+                    </h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Full Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="ownerName" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Contact Number <span class="required">*</span></label>
+                            <input type="tel" class="form-input" id="ownerPhone" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit number">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Details -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Location
+                    </h3>
+
+                    <div class="form-group">
+                        <label>Full Address <span class="required">*</span></label>
+                        <textarea class="form-textarea" id="address" required placeholder="Enter complete address with landmarks"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>City <span class="required">*</span></label>
+                            <select class="form-select" id="city" required>
+                                <option value="">Select city...</option>
+                                <option value="mumbai">Mumbai</option>
+                                <option value="delhi">Delhi</option>
+                                <option value="bangalore">Bangalore</option>
+                                <option value="hyderabad">Hyderabad</option>
+                                <option value="chennai">Chennai</option>
+                                <option value="kolkata">Kolkata</option>
+                                <option value="pune">Pune</option>
+                                <option value="ahmedabad">Ahmedabad</option>
+                                <option value="jaipur">Jaipur</option>
+                                <option value="coimbatore">Coimbatore</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Pincode <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="pincode" pattern="[0-9]{6}" maxlength="6" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Location Link (Google Maps) <span class="required">*</span></label>
+                        <input type="url" class="form-input" id="locationLink" required placeholder="https://maps.google.com/...">
+                        <div class="helper-text">Share your Google Maps link for easy navigation</div>
+                    </div>
+                </div>
+
+                <!-- Parking Image -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-camera"></i>
+                        Parking Photo <span class="required">*</span>
+                    </h3>
+
+                    <div class="image-upload" id="imageUpload" onclick="document.getElementById('imageInput').click()">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p><strong>Click to upload photo</strong></p>
+                        <p class="helper-text">Upload a clear photo of your parking space (Required)</p>
+                        <img id="imagePreview" class="image-preview" alt="Preview">
+                    </div>
+                    <input type="file" id="imageInput" accept="image/*" required style="display: none" onchange="previewImage(event)">
+                </div>
+
+                <!-- Parking Details -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-car"></i>
+                        Parking Details
+                    </h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vehicle Type <span class="required">*</span></label>
+                            <select class="form-select" id="vehicleType" required>
+                                <option value="">Select type...</option>
+                                <option value="2-wheeler">2-Wheeler Only</option>
+                                <option value="4-wheeler">4-Wheeler Only</option>
+                                <option value="4+wheeler">4+ Wheeler (Trucks/Buses)</option>
+                            </select>
+                            <small class="helper-text">Select which type of vehicle can park here</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Number of Spaces</label>
+                            <input type="number" class="form-input" id="totalSpaces" min="1" max="10" value="1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Price per Hour (₹) <span class="required">*</span></label>
+                            <input type="number" class="form-input" id="pricePerHour" required min="10" step="10">
+                            <small class="helper-text" id="priceHelper">Set price for the selected vehicle type</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Total Available Hours <span class="required">*</span></label>
+                            <input type="number" class="form-input" id="totalHours" required min="1" readonly style="background: #f7fafc; cursor: not-allowed;">
+                            <small class="helper-text">Auto-calculated from Available From/To dates</small>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Available From <span class="required">*</span></label>
+                            <input type="datetime-local" class="form-input" id="availableFrom" required onchange="calculateTotalHours()">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Available To <span class="required">*</span></label>
+                            <input type="datetime-local" class="form-input" id="availableTo" required onchange="calculateTotalHours()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-credit-card"></i>
+                        Accepted Payment Methods
+                    </h3>
+
+                    <div class="payment-methods">
+                        <div class="payment-option">
+                            <input type="checkbox" id="cash" value="cash" checked onchange="toggleUpiField()">
+                            <label for="cash">Cash (Pay at parking)</label>
+                        </div>
+                        <div class="payment-option">
+                            <input type="checkbox" id="upi" value="upi" onchange="toggleUpiField()">
+                            <label for="upi">UPI</label>
+                        </div>
+                    </div>
+
+                    <!-- UPI ID Field (shown only when UPI is selected) -->
+                    <div id="upiIdSection" style="display: none; margin-top: 1.5rem;">
+                        <div class="form-group">
+                            <label>Your UPI ID <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="upiId" placeholder="yourname@paytm, yourname@ybl, etc.">
+                            <div class="helper-text">UPI ID will be shown to customer only after you accept their booking</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-check-circle"></i> List My Parking Space
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let uploadedImageUrl = null;
+
+        // Pre-fill owner details if available
+        window.onload = function() {
+            const userName = localStorage.getItem('userName');
+            const userPhone = localStorage.getItem('userPhone');
+            if (userName) document.getElementById('ownerName').value = userName;
+            if (userPhone) document.getElementById('ownerPhone').value = userPhone;
+        };
+
+        // Toggle UPI ID field based on UPI checkbox
+        function toggleUpiField() {
+            const upiCheckbox = document.getElementById('upi');
+            const upiIdSection = document.getElementById('upiIdSection');
+            const upiIdInput = document.getElementById('upiId');
+            
+            if (upiCheckbox.checked) {
+                upiIdSection.style.display = 'block';
+                upiIdInput.required = true;
+            } else {
+                upiIdSection.style.display = 'none';
+                upiIdInput.required = false;
+            }
+        }
+
+        // Calculate total hours from date range
+        function calculateTotalHours() {
+            const fromDate = document.getElementById('availableFrom').value;
+            const toDate = document.getElementById('availableTo').value;
+            
+            if (fromDate && toDate) {
+                const from = new Date(fromDate);
+                const to = new Date(toDate);
+                
+                if (to <= from) {
+                    alert('Available To must be after Available From!');
+                    document.getElementById('availableTo').value = '';
+                    document.getElementById('totalHours').value = '';
+                    return;
+                }
+                
+                // Calculate hours difference
+                const diffMs = to - from;
+                const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+                
+                document.getElementById('totalHours').value = diffHours;
+            }
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    document.getElementById('imageUpload').classList.add('has-image');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return null;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const token = localStorage.getItem('token');
+
+            try {
+                const response = await fetch('/api/parking/upload-image', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.url;
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+            }
+
+            return null;
+        }
+
+        async function submitListing(event) {
+            event.preventDefault();
+
+            // Validate at least one payment method is selected
+            const cashChecked = document.getElementById('cash').checked;
+            const upiChecked = document.getElementById('upi').checked;
+            
+            if (!cashChecked && !upiChecked) {
+                alert('Please select at least one payment method (Cash or UPI)');
+                return;
+            }
+
+            // If UPI is selected, validate UPI ID
+            if (upiChecked) {
+                const upiId = document.getElementById('upiId').value.trim();
+                if (!upiId) {
+                    alert('Please enter your UPI ID');
+                    document.getElementById('upiId').focus();
+                    return;
+                }
+            }
+
+            // Get form values
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const ownerName = document.getElementById('ownerName').value;
+            const ownerPhone = document.getElementById('ownerPhone').value;
+            const address = document.getElementById('address').value;
+            const city = document.getElementById('city').value;
+            const pincode = document.getElementById('pincode').value;
+            const locationLink = document.getElementById('locationLink').value;
+            const vehicleType = document.getElementById('vehicleType').value;
+            const totalSpaces = document.getElementById('totalSpaces').value;
+            const pricePerHour = document.getElementById('pricePerHour').value;
+            const totalHours = document.getElementById('totalHours').value;
+            const availableFrom = document.getElementById('availableFrom').value;
+            const availableTo = document.getElementById('availableTo').value;
+
+            // Get selected payment methods and UPI ID
+            const paymentMethods = [];
+            if (cashChecked) paymentMethods.push('cash');
+            if (upiChecked) paymentMethods.push('upi');
+            
+            const upiId = upiChecked ? document.getElementById('upiId').value.trim() : '';
+
+            // Check if image is uploaded
+            const fileInput = document.getElementById('imageInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please upload a parking space photo');
+                document.getElementById('imageUpload').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            // Upload image first
+            const imageUrl = await uploadImage();
+            
+            if (!imageUrl) {
+                alert('Failed to upload image. Please try again.');
+                return;
+            }
+
+            // Save owner details
+            localStorage.setItem('userName', ownerName);
+            localStorage.setItem('userPhone', ownerPhone);
+
+            const token = localStorage.getItem('token');
+
+            // Use default coordinates (Bangalore) - only for searching/mapping
+            let latitude = 12.9716;
+            let longitude = 77.5946;
+
+            try {
+                const response = await fetch('/api/parking/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        address: `${address}, ${city} - ${pincode}`,
+                        latitude: latitude,
+                        longitude: longitude,
+                        location_link: locationLink,  // Store the Google Maps link as-is
+                        vehicle_type: vehicleType,
+                        total_spaces: parseInt(totalSpaces),
+                        price_per_hour: parseFloat(pricePerHour),
+                        total_hours: parseInt(totalHours),
+                        available_from: availableFrom,
+                        available_to: availableTo,
+                        owner_name: ownerName,
+                        owner_phone: ownerPhone,
+                        payment_methods: paymentMethods,
+                        upi_id: upiId,
+                        images: imageUrl ? [imageUrl] : []
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('Parking space listed successfully! It will be available after admin approval.');
+                    window.location.href = '/dashboard';
+                } else {
+                    // Show detailed error
+                    console.error('Error details:', data);
+                    alert(data.error || 'Failed to list parking space. Please check all required fields.');
+                }
+            } catch (error) {
+                console.error('Error creating listing:', error);
+                alert('Failed to create listing. Please check your internet connection and try again.');
+            }
+        }
+    </script>
+</body>
+</html>

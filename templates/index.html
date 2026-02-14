@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartParking - Find & Share Parking Spaces</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">
+                <i class="fas fa-parking"></i>
+                SmartParking
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="/login" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Find Parking.<br>Share Spaces.<br>Earn Money.</h1>
+                <p>The easiest way to find parking or earn extra income by renting out your unused parking space.</p>
+                <div class="hero-buttons">
+                    <a href="/register" class="btn btn-primary btn-lg">Get Started Free</a>
+                    <a href="#how-it-works" class="btn btn-outline btn-lg">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" style="padding: 6rem 0; background: white;">
+        <div class="container">
+            <div style="text-align: center; max-width: 600px; margin: 0 auto 4rem;">
+                <h2>Why Choose SmartParking?</h2>
+                <p class="text-muted">Everything you need for hassle-free parking</p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                <!-- Feature 1 -->
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <i class="fas fa-search-location" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    <h4>Find Parking Fast</h4>
+                    <p class="text-muted">Search and book parking spots near your destination in seconds with real-time availability.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <i class="fas fa-dollar-sign" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    <h4>Earn Extra Income</h4>
+                    <p class="text-muted">List your unused parking space and earn money when you're not using it. Set your own prices.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="card">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                        <i class="fas fa-shield-alt" style="font-size: 1.5rem; color: white;"></i>
+                    </div>
+                    <h4>Secure & Safe</h4>
+                    <p class="text-muted">Built-in wallet system with secure transactions and verified user reviews for peace of mind.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" style="padding: 6rem 0; background: #f8fafc;">
+        <div class="container">
+            <div style="text-align: center; max-width: 600px; margin: 0 auto 4rem;">
+                <h2>How It Works</h2>
+                <p class="text-muted">Get started in three simple steps</p>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 3rem;">
+                <!-- Step 1 -->
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);">
+                        <span style="color: white; font-size: 2rem; font-weight: 700;">1</span>
+                    </div>
+                    <h4>Create Account</h4>
+                    <p class="text-muted">Sign up for free and set up your profile in minutes. No credit card required.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 25px rgba(240, 147, 251, 0.3);">
+                        <span style="color: white; font-size: 2rem; font-weight: 700;">2</span>
+                    </div>
+                    <h4>Search or List</h4>
+                    <p class="text-muted">Find parking near you or list your space. Add photos and set your availability.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; box-shadow: 0 10px 25px rgba(74, 222, 128, 0.3);">
+                        <span style="color: white; font-size: 2rem; font-weight: 700;">3</span>
+                    </div>
+                    <h4>Book & Park</h4>
+                    <p class="text-muted">Book instantly, pay securely, and start parking. It's that simple!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section style="padding: 6rem 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); text-align: center; color: white;">
+        <div class="container">
+            <h2 style="color: white; margin-bottom: 1rem;">Ready to Get Started?</h2>
+            <p style="font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem;">Join thousands of users who are already saving time and earning money</p>
+            <a href="/register" class="btn btn-primary btn-lg">Create Free Account</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="background: #0f172a; color: white; padding: 3rem 0 1.5rem;">
+        <div class="container">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 3rem; margin-bottom: 2rem;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 1rem;">
+                        <i class="fas fa-parking"></i>
+                        SmartParking
+                    </div>
+                    <p style="color: #94a3b8; font-size: 0.875rem;">The future of parking is here. Share spaces, save money, reduce congestion.</p>
+                </div>
+                
+                <div>
+                    <h6 style="color: white; margin-bottom: 1rem;">Company</h6>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">About Us</a>
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">Careers</a>
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">Contact</a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h6 style="color: white; margin-bottom: 1rem;">Legal</h6>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">Privacy Policy</a>
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">Terms of Service</a>
+                        <a href="#" style="color: #94a3b8; font-size: 0.875rem;">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="border-top: 1px solid #334155; padding-top: 1.5rem; text-align: center;">
+                <p style="color: #64748b; font-size: 0.875rem;">&copy; 2024 SmartParking. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

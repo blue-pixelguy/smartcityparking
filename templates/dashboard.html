@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .user-menu {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        .btn-wallet {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-wallet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(240, 147, 251, 0.3);
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-color: var(--primary);
+        }
+
+        .action-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .listings-section {
+            margin-top: 3rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .parking-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+        }
+
+        .parking-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .parking-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 3rem;
+        }
+
+        .parking-info {
+            padding: 1.5rem;
+        }
+
+        .parking-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .parking-address {
+            color: var(--gray);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .parking-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .parking-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--gray);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .info-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-lighter);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        .wallet-balance {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .balance-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+
+        .payment-methods {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .payment-option {
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .payment-option:hover {
+            border-color: var(--primary);
+            background: var(--primary-lighter);
+        }
+
+        .payment-option input[type="number"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body style="background: #f1f5f9;">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="/" class="navbar-brand">
+                <i class="fas fa-parking"></i>
+                SmartParking
+            </a>
+            <div class="user-menu" style="display: flex; gap: 1.5rem; align-items: center;">
+                <a href="/booking-requests" style="color: #667eea; text-decoration: none; font-weight: 600;">
+                    <i class="fas fa-clipboard-list"></i> Host Panel
+                </a>
+                <button class="btn-wallet" onclick="openWallet()">
+                    <i class="fas fa-wallet"></i> Wallet
+                </button>
+                <div class="user-avatar" onclick="openProfile()" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Welcome Header -->
+        <div class="dashboard-header">
+            <div>
+                <h1 id="welcomeMessage">Welcome to Your Dashboard!</h1>
+                <p class="text-muted">Manage your bookings and parking spaces</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="action-card" onclick="window.location.href='/find-parking'">
+                <div class="action-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <i class="fas fa-search" style="color: white;"></i>
+                </div>
+                <h4><i class="fas fa-search"></i> Find Parking</h4>
+                <p class="text-muted">Search for available parking spaces near you</p>
+            </div>
+
+            <div class="action-card" onclick="window.location.href='/list-space'">
+                <div class="action-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <i class="fas fa-plus-circle" style="color: white;"></i>
+                </div>
+                <h4><i class="fas fa-plus-circle"></i> List Your Space</h4>
+                <p class="text-muted">Earn money by listing your parking space</p>
+            </div>
+
+            <div class="action-card" onclick="window.location.href='/my-bookings'">
+                <div class="action-icon" style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);">
+                    <i class="fas fa-calendar" style="color: white;"></i>
+                </div>
+                <h4><i class="fas fa-calendar"></i> My Bookings</h4>
+                <p class="text-muted">View and manage your bookings</p>
+            </div>
+        </div>
+
+        <!-- Available Parking Spaces -->
+        <div class="listings-section">
+            <div class="section-header">
+                <h3>Available Parking Spaces</h3>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <select id="vehicleFilter" onchange="filterParkingSpaces()" style="padding: 0.75rem 1rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 600; cursor: pointer;">
+                        <option value="all">All Vehicles</option>
+                        <option value="2-wheeler">🏍️ 2-Wheeler</option>
+                        <option value="4-wheeler">🚗 4-Wheeler</option>
+                        <option value="4+wheeler">🚚 4+ Wheeler</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadParkingSpaces()">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div id="parkingGrid" class="parking-grid">
+                <!-- Parking spaces will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user"></i> My Profile</h3>
+                <button class="modal-close" onclick="closeProfile()">&times;</button>
+            </div>
+            <div class="profile-info">
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                        <small style="color: var(--gray);">Name</small>
+                        <div id="userName" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <small style="color: var(--gray);">Email</small>
+                        <div id="userEmail" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div>
+                        <small style="color: var(--gray);">Phone</small>
+                        <div id="userPhone" style="font-weight: 600;"></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <div>
+                        <small style="color: var(--gray);">Wallet Balance</small>
+                        <div id="userBalance" style="font-weight: 700; color: var(--primary); font-size: 1.25rem;"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Wallet Modal -->
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-wallet"></i> My Wallet</h3>
+                <button class="modal-close" onclick="closeWallet()">&times;</button>
+            </div>
+            
+            <div class="wallet-balance">
+                <div style="font-size: 0.875rem; opacity: 0.9;">Current Balance</div>
+                <div class="balance-amount" id="walletBalance">₹0.00</div>
+            </div>
+
+            <h4 style="margin-bottom: 1rem;">Add Money</h4>
+            <div class="payment-methods">
+                <!-- Razorpay (INR) -->
+                <div class="payment-option">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <i class="fas fa-rupee-sign" style="color: var(--primary);"></i>
+                        <strong>Add via Razorpay (INR)</strong>
+                    </div>
+                    <input type="number" id="inrAmount" placeholder="Enter amount in ₹" min="1">
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 0.75rem;" onclick="addMoneyRazorpay()">
+                        Pay with Razorpay
+                    </button>
+                </div>
+
+                <!-- NowPayments (Crypto) -->
+                <div class="payment-option">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <i class="fab fa-bitcoin" style="color: #f7931a;"></i>
+                        <strong>Add via Crypto (NowPayments)</strong>
+                    </div>
+                    <input type="number" id="cryptoAmount" placeholder="Enter amount in USD" min="1">
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 0.75rem; background: linear-gradient(135deg, #f7931a 0%, #ff6b00 100%);" onclick="addMoneyCrypto()">
+                        Pay with Crypto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        let currentUser = null;
+        let walletData = null;
+
+        // Check authentication
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    
+                    // Update UI
+                    document.getElementById('welcomeMessage').textContent = `Welcome, ${currentUser.name}!`;
+                    document.getElementById('userName').textContent = currentUser.name;
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                    document.getElementById('userPhone').textContent = currentUser.phone || 'Not provided';
+                    
+                    // Set user avatar initials
+                    const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                    document.getElementById('userAvatar').innerHTML = initials;
+                    
+                    // Load wallet
+                    loadWallet();
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                console.error('Error loading user:', error);
+            }
+        }
+
+        // Load wallet data
+        async function loadWallet() {
+            try {
+                const response = await fetch('/api/wallet/balance', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    walletData = data.wallet;
+                    const balance = walletData.balance || 0;
+                    document.getElementById('userBalance').textContent = `₹${balance.toFixed(2)}`;
+                    document.getElementById('walletBalance').textContent = `₹${balance.toFixed(2)}`;
+                }
+            } catch (error) {
+                console.error('Error loading wallet:', error);
+            }
+        }
+
+        // Load parking spaces
+        async function loadParkingSpaces() {
+            const grid = document.getElementById('parkingGrid');
+            grid.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="spinner"></div></div>';
+
+            try {
+                const response = await fetch('/api/parking/search?status=approved&limit=20');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const spaces = data.parking_spaces || [];
+
+                    if (spaces.length === 0) {
+                        grid.innerHTML = `
+                            <div class="empty-state" style="grid-column: 1/-1;">
+                                <div class="empty-icon"><i class="fas fa-parking"></i></div>
+                                <h4>No Parking Spaces Available</h4>
+                                <p>Be the first to list your parking space!</p>
+                                <button class="btn btn-primary" onclick="window.location.href='/list-space'">
+                                    <i class="fas fa-plus"></i> List Your Space
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        grid.innerHTML = spaces.map(space => `
+                            <div class="parking-card" data-vehicle-type="${space.vehicle_type || 'all'}">
+                                <div class="parking-image">
+                                    <i class="fas fa-parking"></i>
+                                </div>
+                                <div class="parking-info">
+                                    <div class="parking-title">${space.title || 'Parking Space'}</div>
+                                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                        ${space.vehicle_type ? `
+                                            <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                                ${space.vehicle_type === '2-wheeler' ? '🏍️ 2-Wheeler' : space.vehicle_type === '4-wheeler' ? '🚗 4-Wheeler' : '🚚 4+ Wheeler'}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    <div class="parking-address">
+                                        <i class="fas fa-map-marker-alt"></i> ${space.address || 'Location not specified'}
+                                    </div>
+                                    ${space.location_link ? `
+                                        <div style="margin: 0.5rem 0;">
+                                            <a href="${space.location_link}" target="_blank" style="color: #48bb78; text-decoration: none; font-size: 0.9rem;">
+                                                <i class="fas fa-map-marked-alt"></i> View on Maps
+                                            </a>
+                                        </div>
+                                    ` : ''}
+                                    <div class="parking-meta">
+                                        <div class="parking-price">₹${space.price_per_hour || 0}/hr</div>
+                                        <button class="btn btn-primary btn-sm" onclick="bookParking('${space.id}')">
+                                            Book Now
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading parking spaces:', error);
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <div class="empty-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <h4>Error loading parking spaces</h4>
+                        <button class="btn btn-primary" onclick="loadParkingSpaces()">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Modal functions
+        function openProfile() {
+            document.getElementById('profileModal').classList.add('active');
+        }
+
+        function closeProfile() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+
+        function openWallet() {
+            loadWallet();
+            document.getElementById('walletModal').classList.add('active');
+        }
+
+        function closeWallet() {
+            document.getElementById('walletModal').classList.remove('active');
+        }
+
+        // Add money via Razorpay
+        async function addMoneyRazorpay() {
+            const amount = document.getElementById('inrAmount').value;
+            if (!amount || amount < 1) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            // Show loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            try {
+                // Create order
+                const response = await fetch('/api/wallet/add-money', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        payment_method: 'razorpay'
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Reset button state
+                button.disabled = false;
+                button.innerHTML = originalText;
+                
+                if (response.ok && data.order_id) {
+                    // Initialize Razorpay
+                    const options = {
+                        key: data.razorpay_key,
+                        amount: data.amount * 100,
+                        currency: 'INR',
+                        name: 'SmartParking',
+                        description: 'Add money to wallet',
+                        order_id: data.order_id,
+                        handler: async function(razorpayResponse) {
+                            // Show verifying state
+                            button.disabled = true;
+                            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+                            
+                            // Verify payment
+                            const verifyResponse = await fetch('/api/wallet/verify-payment', {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                                    razorpay_order_id: razorpayResponse.razorpay_order_id,
+                                    razorpay_signature: razorpayResponse.razorpay_signature
+                                })
+                            });
+
+                            button.disabled = false;
+                            button.innerHTML = originalText;
+
+                            if (verifyResponse.ok) {
+                                alert('Money added successfully!');
+                                loadWallet();
+                                document.getElementById('inrAmount').value = '';
+                            } else {
+                                alert('Payment verification failed');
+                            }
+                        },
+                        prefill: {
+                            name: currentUser.name,
+                            email: currentUser.email,
+                            contact: currentUser.phone
+                        },
+                        modal: {
+                            ondismiss: function() {
+                                button.disabled = false;
+                                button.innerHTML = originalText;
+                            }
+                        }
+                    };
+
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+                } else {
+                    alert(data.error || 'Failed to create payment order');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                button.disabled = false;
+                button.innerHTML = originalText;
+                alert('Failed to process payment');
+            }
+        }
+
+        // Add money via Crypto (NowPayments)
+        async function addMoneyCrypto() {
+            const amount = document.getElementById('cryptoAmount').value;
+            if (!amount || amount < 1) {
+                alert('Please enter a valid amount');
+                return;
+            }
+
+            // Show loading state
+            const button = event.target;
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Payment...';
+
+            try {
+                const response = await fetch('/api/wallet/add-money-crypto', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        amount: parseFloat(amount),
+                        currency: 'usdttrc20'  // Default to USDT TRC20
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Reset button state
+                button.disabled = false;
+                button.innerHTML = originalText;
+                
+                if (response.ok && data.success) {
+                    alert(`Payment created! Send ${data.pay_amount} ${data.pay_currency} to the address shown. Your wallet will update automatically after confirmation.`);
+                    document.getElementById('cryptoAmount').value = '';
+                    
+                    // Show payment details
+                    console.log('Payment Details:', data);
+                    console.log('Payment ID:', data.payment_id);
+                    console.log('Pay Address:', data.pay_address);
+                    console.log('Amount:', data.pay_amount, data.pay_currency);
+                } else {
+                    alert(data.error || 'Failed to create crypto payment');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                button.disabled = false;
+                button.innerHTML = originalText;
+                alert('Failed to process crypto payment');
+            }
+        }
+
+        // Filter parking spaces by vehicle type
+        function filterParkingSpaces() {
+            const filter = document.getElementById('vehicleFilter').value;
+            const cards = document.querySelectorAll('.parking-card');
+            
+            cards.forEach(card => {
+                const vehicleType = card.getAttribute('data-vehicle-type');
+                if (filter === 'all' || vehicleType === filter || vehicleType === 'all') {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Placeholder functions
+        function showSearchModal() {
+            alert('Search functionality coming soon! Check available spaces below.');
+            loadParkingSpaces();
+        }
+
+        function showListSpaceModal() {
+            alert('List space form coming soon! For now, you can use the API endpoint.');
+        }
+
+        function showMyBookings() {
+            // Redirect to my bookings page
+            window.location.href = '/my-bookings';
+        }
+
+        function bookParking(parkingId) {
+            // Redirect to booking page
+            window.location.href = `/booking/${parkingId}`;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        // Initialize
+        loadUserData();
+        loadParkingSpaces();
+
+        // Close modals on outside click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

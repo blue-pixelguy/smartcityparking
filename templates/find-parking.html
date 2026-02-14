@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Find Parking - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .search-container {
+            max-width: 1400px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .search-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .search-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+
+        .filter-sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .filter-section {
+            margin-bottom: 2rem;
+        }
+
+        .filter-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .city-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+        }
+
+        .city-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-option:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .filter-option.active {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .filter-option input[type="radio"] {
+            margin-right: 0.75rem;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .filter-option label {
+            cursor: pointer;
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .btn-search {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+        }
+
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .results-area {
+            background: #f7fafc;
+            border-radius: 16px;
+            padding: 2rem;
+            min-height: 500px;
+        }
+
+        .parking-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+
+        .parking-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .parking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .parking-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .parking-address {
+            color: #718096;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .parking-price {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .parking-details {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #4a5568;
+        }
+
+        .detail-item i {
+            color: #667eea;
+        }
+
+        .parking-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .availability-badge {
+            background: #48bb78;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .btn-book {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-book:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(72, 187, 120, 0.3);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #718096;
+        }
+
+        .no-results i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #cbd5e0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-parking"></i>
+                <span>SmartParking</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="/logout" class="nav-link">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="search-container">
+        <div class="search-header">
+            <h1><i class="fas fa-search"></i> Find Parking</h1>
+            <p>Discover available parking spaces in your city</p>
+        </div>
+
+        <div class="search-grid">
+            <!-- Filter Sidebar -->
+            <div class="filter-sidebar">
+                <div class="filter-section">
+                    <h3><i class="fas fa-map-marker-alt"></i> Select City</h3>
+                    <select class="city-select" id="citySelect">
+                        <option value="">Choose a city...</option>
+                        <option value="mumbai">Mumbai</option>
+                        <option value="delhi">Delhi</option>
+                        <option value="bangalore">Bangalore</option>
+                        <option value="hyderabad">Hyderabad</option>
+                        <option value="chennai">Chennai</option>
+                        <option value="kolkata">Kolkata</option>
+                        <option value="pune">Pune</option>
+                        <option value="ahmedabad">Ahmedabad</option>
+                        <option value="jaipur">Jaipur</option>
+                        <option value="coimbatore">Coimbatore</option>
+                    </select>
+                </div>
+
+                <div class="filter-section">
+                    <h3><i class="fas fa-car"></i> Vehicle Type</h3>
+                    <div class="filter-options">
+                        <div class="filter-option active" onclick="selectFilter(this, '2-wheeler')">
+                            <input type="radio" name="vehicle" id="2wheeler" value="2-wheeler" checked>
+                            <label for="2wheeler">
+                                <i class="fas fa-motorcycle"></i> 2-Wheeler
+                            </label>
+                        </div>
+                        <div class="filter-option" onclick="selectFilter(this, '4-wheeler')">
+                            <input type="radio" name="vehicle" id="4wheeler" value="4-wheeler">
+                            <label for="4wheeler">
+                                <i class="fas fa-car"></i> 4-Wheeler
+                            </label>
+                        </div>
+                        <div class="filter-option" onclick="selectFilter(this, '4+wheeler')">
+                            <input type="radio" name="vehicle" id="4pluswheeler" value="4+wheeler">
+                            <label for="4pluswheeler">
+                                <i class="fas fa-truck"></i> More than 4 Wheeler
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-search" onclick="searchParking()">
+                    <i class="fas fa-search"></i> Search Parking
+                </button>
+            </div>
+
+            <!-- Results Area -->
+            <div class="results-area" id="resultsArea">
+                <div class="no-results">
+                    <i class="fas fa-search-location"></i>
+                    <h3>Ready to find parking?</h3>
+                    <p>Select your city and vehicle type, then click search!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedVehicleType = '2-wheeler';
+
+        function selectFilter(element, type) {
+            // Remove active class from all options
+            document.querySelectorAll('.filter-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            
+            // Add active class to selected option
+            element.classList.add('active');
+            
+            // Check the radio button
+            element.querySelector('input[type="radio"]').checked = true;
+            
+            // Store selected type
+            selectedVehicleType = type;
+        }
+
+        async function searchParking() {
+            const city = document.getElementById('citySelect').value;
+            
+            if (!city) {
+                alert('Please select a city first!');
+                return;
+            }
+
+            const resultsArea = document.getElementById('resultsArea');
+            
+            // Show loading
+            resultsArea.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Searching for parking spaces...</p>
+                </div>
+            `;
+
+            try {
+                // Get user token
+                const token = localStorage.getItem('token');
+                
+                // Make API call
+                const response = await fetch(`/api/parking/search?city=${city}&vehicle_type=${selectedVehicleType}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.parking_spaces && data.parking_spaces.length > 0) {
+                    displayResults(data.parking_spaces);
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                console.error('Error searching parking:', error);
+                resultsArea.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Oops! Something went wrong</h3>
+                        <p>Unable to search parking spaces. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayResults(parkingSpaces) {
+            const resultsArea = document.getElementById('resultsArea');
+            
+            let html = `<h2 style="margin-bottom: 1.5rem; color: #2d3748;">
+                <i class="fas fa-car-side"></i> Found ${parkingSpaces.length} parking spaces
+            </h2>`;
+
+            parkingSpaces.forEach(parking => {
+                html += `
+                    <div class="parking-card">
+                        <div class="parking-header">
+                            <div>
+                                <div class="parking-title">${parking.title}</div>
+                                <div class="parking-address">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    ${parking.address}
+                                </div>
+                            </div>
+                            <div class="parking-price">
+                                ₹${parking.price_per_hour}/hr
+                            </div>
+                        </div>
+                        
+                        <div class="parking-details">
+                            <div class="detail-item">
+                                <i class="fas fa-car"></i>
+                                <span>${parking.vehicle_type}</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-clock"></i>
+                                <span>${parking.total_hours} hours</span>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>${parking.available_spaces} spaces available</span>
+                            </div>
+                        </div>
+                        
+                        <div class="parking-footer">
+                            <div class="availability-badge">
+                                <i class="fas fa-check"></i> Available
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                ${parking.location_link ? `
+                                    <button class="btn-book" onclick="window.open('${parking.location_link}', '_blank')" style="background: #48bb78;">
+                                        <i class="fas fa-map-marked-alt"></i> View Location
+                                    </button>
+                                ` : ''}
+                                <button class="btn-book" onclick="bookParking('${parking.id}', '${parking.title}', ${parking.price_per_hour})">
+                                    <i class="fas fa-calendar-check"></i> Book Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsArea.innerHTML = html;
+        }
+
+        function showNoResults() {
+            const resultsArea = document.getElementById('resultsArea');
+            resultsArea.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-car-crash"></i>
+                    <h3>No parking spaces found</h3>
+                    <p>Try selecting a different city or vehicle type</p>
+                </div>
+            `;
+        }
+
+        function bookParking(parkingId, parkingTitle, pricePerHour) {
+            // Store parking info and redirect to booking page
+            localStorage.setItem('selectedParking', JSON.stringify({
+                id: parkingId,
+                title: parkingTitle,
+                price: pricePerHour
+            }));
+            window.location.href = '/booking/' + parkingId;
+        }
+    </script>
+</body>
+</html>

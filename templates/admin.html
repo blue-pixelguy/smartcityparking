@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .admin-nav {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .admin-nav .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-logo {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .admin-menu a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.3s;
+        }
+
+        .admin-menu a:hover {
+            opacity: 0.8;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+        }
+
+        .stat-card .icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card.blue .icon {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .stat-card.green .icon {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .stat-card.yellow .icon {
+            background: #fef3c7;
+            color: #ca8a04;
+        }
+
+        .stat-card.purple .icon {
+            background: #f3e8ff;
+            color: #9333ea;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .data-table {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 1.25rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8fafc;
+        }
+
+        th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge.approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge.rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-approve {
+            background: #16a34a;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: #15803d;
+        }
+
+        .btn-reject {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #b91c1c;
+        }
+
+        .btn-view {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #5568d3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="admin-nav">
+        <div class="container">
+            <div class="admin-logo">
+                <i class="fas fa-shield-alt"></i>
+                SmartParking Admin
+            </div>
+            <div class="admin-menu">
+                <a href="/admin">Dashboard</a>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <p style="color: #64748b;">Manage parking spaces, users, and bookings</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="icon"><i class="fas fa-users"></i></div>
+                <h3 id="totalUsers">0</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="stat-card green">
+                <div class="icon"><i class="fas fa-parking"></i></div>
+                <h3 id="activeListings">0</h3>
+                <p>Active Listings</p>
+            </div>
+            <div class="stat-card yellow">
+                <div class="icon"><i class="fas fa-clock"></i></div>
+                <h3 id="pendingApprovals">0</h3>
+                <p>Pending Approvals</p>
+            </div>
+            <div class="stat-card purple">
+                <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                <h3 id="totalRevenue">₹0</h3>
+                <p>Total Revenue</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('pending')">
+                <i class="fas fa-clock"></i> Pending Approvals
+            </button>
+        </div>
+
+        <!-- Pending Approvals Tab -->
+        <div id="pending-tab" class="tab-content active">
+            <div class="data-table">
+                <div class="table-header">
+                    <h2>Pending Parking Spaces</h2>
+                    <button class="refresh-btn" onclick="loadPendingParking()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div id="pendingTableContainer">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('adminToken');
+        
+        // Check if admin is logged in
+        if (!token) {
+            window.location.href = '/secret-admin-panel';
+        }
+
+        // Load dashboard on page load
+        window.onload = function() {
+            loadDashboardStats();
+            loadPendingParking();
+        };
+
+        // Switch tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'pending') {
+                loadPendingParking();
+            }
+        }
+
+        // Load dashboard statistics
+        async function loadDashboardStats() {
+            try {
+                const response = await fetch('/api/admin/dashboard', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    document.getElementById('totalUsers').textContent = data.users.total;
+                    document.getElementById('activeListings').textContent = data.parking_spaces.approved;
+                    document.getElementById('pendingApprovals').textContent = data.parking_spaces.pending;
+                    document.getElementById('totalRevenue').textContent = `₹${data.revenue.total.toFixed(2)}`;
+                } else if (response.status === 403) {
+                    alert('Access denied. Admin privileges required.');
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('admin');
+                    window.location.href = '/secret-admin-panel';
+                } else {
+                    console.error('Failed to load dashboard stats');
+                }
+            } catch (error) {
+                console.error('Error loading dashboard stats:', error);
+            }
+        }
+
+        // Load pending parking spaces
+        async function loadPendingParking() {
+            const container = document.getElementById('pendingTableContainer');
+            container.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Loading...</p></div>';
+
+            try {
+                const response = await fetch('/api/admin/parking/pending', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.parking_spaces.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-check-circle"></i>
+                                <p>No pending approvals</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let tableHTML = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Owner</th>
+                                    <th>Address</th>
+                                    <th>Vehicle Type</th>
+                                    <th>Price/Hour</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.parking_spaces.forEach(parking => {
+                        tableHTML += `
+                            <tr>
+                                <td><strong>${parking.title}</strong></td>
+                                <td>
+                                    ${parking.owner.name}<br>
+                                    <small style="color: #64748b;">${parking.owner.email}</small>
+                                </td>
+                                <td>${parking.address}</td>
+                                <td><span class="badge active">${parking.vehicle_type}</span></td>
+                                <td>₹${parking.price_per_hour}</td>
+                                <td>${new Date(parking.created_at).toLocaleDateString()}</td>
+                                <td>
+                                    <div class="action-btns">
+                                        <button class="btn btn-approve" onclick="approveParking('${parking.id}')">
+                                            <i class="fas fa-check"></i> Approve
+                                        </button>
+                                        <button class="btn btn-reject" onclick="rejectParking('${parking.id}')">
+                                            <i class="fas fa-times"></i> Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHTML += '</tbody></table>';
+                    container.innerHTML = tableHTML;
+                } else {
+                    container.innerHTML = '<div class="empty-state"><p>Failed to load data</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading pending parking:', error);
+                container.innerHTML = '<div class="empty-state"><p>Error loading data</p></div>';
+            }
+        }
+
+        // Approve parking space
+        async function approveParking(parkingId) {
+            if (!confirm('Are you sure you want to approve this parking space?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/parking/${parkingId}/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Parking space approved successfully!');
+                    loadDashboardStats();
+                    loadPendingParking();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to approve parking space');
+                }
+            } catch (error) {
+                console.error('Error approving parking:', error);
+                alert('Error approving parking space');
+            }
+        }
+
+        // Reject parking space
+        async function rejectParking(parkingId) {
+            const reason = prompt('Enter rejection reason (optional):');
+            
+            try {
+                const response = await fetch(`/api/admin/parking/${parkingId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ reason: reason || '' })
+                });
+
+                if (response.ok) {
+                    alert('Parking space rejected');
+                    loadDashboardStats();
+                    loadPendingParking();
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to reject parking space');
+                }
+            } catch (error) {
+                console.error('Error rejecting parking:', error);
+                alert('Error rejecting parking space');
+            }
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('admin');
+            window.location.href = '/secret-admin-panel';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .bookings-container {
+            max-width: 1200px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e2e8f0;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 1rem 2rem;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #718096;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            transition: all 0.3s;
+        }
+
+        .booking-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .booking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+
+        .booking-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .booking-id {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .status-pending {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        .status-confirmed {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .status-active {
+            background: #e3f2fd;
+            color: #2196f3;
+        }
+
+        .status-completed {
+            background: #f3e5f5;
+            color: #9c27b0;
+        }
+
+        .status-cancelled {
+            background: #ffebee;
+            color: #f44336;
+        }
+
+        .booking-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+            background: #f7fafc;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .detail-value i {
+            color: #667eea;
+            margin-right: 0.5rem;
+        }
+
+        .booking-actions {
+            display: flex;
+            gap: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .btn-action {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-view {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-cancel {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #e53e3e;
+            transform: translateY(-2px);
+        }
+
+        .btn-contact {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-contact:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+
+        .notification-badge {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .notification-badge i {
+            font-size: 1.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #718096;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #cbd5e0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-parking"></i>
+                <span>SmartParking</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="/find-parking" class="nav-link">
+                    <i class="fas fa-search"></i> Find Parking
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bookings-container">
+        <div class="page-header">
+            <h1><i class="fas fa-calendar-alt"></i> My Bookings</h1>
+            <p>View and manage your parking bookings</p>
+        </div>
+
+        <!-- Notification -->
+        <div id="notification" style="display: none;"></div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('all')">
+                <i class="fas fa-list"></i> All Bookings
+            </button>
+            <button class="tab" onclick="switchTab('pending')">
+                <i class="fas fa-clock"></i> Pending
+            </button>
+            <button class="tab" onclick="switchTab('confirmed')">
+                <i class="fas fa-check-circle"></i> Confirmed
+            </button>
+            <button class="tab" onclick="switchTab('active')">
+                <i class="fas fa-car-side"></i> Active
+            </button>
+            <button class="tab" onclick="switchTab('completed')">
+                <i class="fas fa-flag-checkered"></i> Completed
+            </button>
+        </div>
+
+        <!-- Bookings List -->
+        <div id="bookingsList">
+            <div class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <h3>Loading your bookings...</h3>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'all';
+
+        window.onload = function() {
+            loadBookings('all');
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab styles
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Load bookings for selected tab
+            loadBookings(tab);
+        }
+
+        async function loadBookings(status) {
+            const token = localStorage.getItem('token');
+            const bookingsList = document.getElementById('bookingsList');
+
+            try {
+                const url = status === 'all' 
+                    ? '/api/booking/my-bookings'
+                    : `/api/booking/my-bookings?status=${status}`;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.bookings && data.bookings.length > 0) {
+                    displayBookings(data.bookings);
+                } else {
+                    showEmptyState(status);
+                }
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                bookingsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Error loading bookings</h3>
+                        <p>Please try again later</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayBookings(bookings) {
+            const bookingsList = document.getElementById('bookingsList');
+            let html = '';
+
+            bookings.forEach(booking => {
+                const statusClass = `status-${booking.status}`;
+                const startDate = new Date(booking.start_time).toLocaleString();
+                const endDate = new Date(booking.end_time).toLocaleString();
+
+                html += `
+                    <div class="booking-card">
+                        ${booking.status === 'confirmed' ? `
+                            <div class="notification-badge">
+                                <i class="fas fa-check-circle"></i>
+                                <div>
+                                    <strong>Booking Confirmed!</strong>
+                                    <p style="margin: 0; font-size: 0.9rem;">Your booking has been approved by the owner</p>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="booking-header">
+                            <div>
+                                <div class="booking-title">${booking.parking.title}</div>
+                                <div class="booking-id">Booking ID: #${booking.id.substring(0, 8)}</div>
+                            </div>
+                            <div class="status-badge ${statusClass}">
+                                <i class="fas fa-circle"></i> ${booking.status.toUpperCase()}
+                            </div>
+                        </div>
+
+                        <div class="booking-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Parking Address</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    ${booking.parking.address}
+                                </span>
+                            </div>
+                            ${booking.parking.location_link ? `
+                                <div class="detail-item">
+                                    <span class="detail-label">Location</span>
+                                    <span class="detail-value">
+                                        <a href="${booking.parking.location_link}" target="_blank" style="color: #48bb78; text-decoration: none;">
+                                            <i class="fas fa-map-marked-alt"></i> View on Google Maps
+                                        </a>
+                                    </span>
+                                </div>
+                            ` : ''}
+                            <div class="detail-item">
+                                <span class="detail-label">Start Time</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-calendar-check"></i>
+                                    ${startDate}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">End Time</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-calendar-times"></i>
+                                    ${endDate}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Duration</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-clock"></i>
+                                    ${booking.duration_hours} hours
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Vehicle</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-car"></i>
+                                    ${booking.vehicle_type} - ${booking.vehicle_number}
+                                </span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Payment Method</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-wallet"></i>
+                                    ${booking.payment_method === 'cash' ? 'Cash (Pay at parking)' : 'UPI'}
+                                </span>
+                            </div>
+                            ${booking.payment_method === 'upi' && booking.status === 'confirmed' && booking.parking.upi_id ? `
+                                <div class="detail-item" style="background: #f0fdf4; padding: 1rem; border-radius: 8px; border: 2px solid #48bb78;">
+                                    <span class="detail-label" style="color: #22543d; font-weight: 700;">Host UPI ID</span>
+                                    <span class="detail-value" style="color: #22543d; font-weight: 700; font-size: 1.1rem;">
+                                        <i class="fas fa-mobile-alt"></i>
+                                        ${booking.parking.upi_id}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.9rem; color: #22543d; background: #f0fdf4; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem;">
+                                    <i class="fas fa-info-circle"></i> <strong>Pay ₹${booking.total_price}</strong> to this UPI ID and show confirmation to the host
+                                </div>
+                            ` : booking.payment_method === 'upi' && booking.status === 'pending' ? `
+                                <div style="font-size: 0.9rem; color: #718096; padding: 0.5rem; margin-top: 0.5rem;">
+                                    <i class="fas fa-info-circle"></i> UPI details will be shown after host accepts your booking
+                                </div>
+                            ` : ''}
+                            <div class="detail-item">
+                                <span class="detail-label">Total Amount</span>
+                                <span class="detail-value">
+                                    <i class="fas fa-rupee-sign"></i>
+                                    ₹${booking.total_price}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="booking-actions">
+                            ${booking.status === 'pending' ? `
+                                <button class="btn-action btn-cancel" onclick="cancelBooking('${booking.id}')">
+                                    <i class="fas fa-times"></i> Cancel Booking
+                                </button>
+                            ` : ''}
+                            ${booking.status === 'confirmed' || booking.status === 'active' ? `
+                                <button class="btn-action btn-view" onclick="viewLocation('${booking.parking.address}')">
+                                    <i class="fas fa-map-marked-alt"></i> View Location
+                                </button>
+                                <button class="btn-action btn-contact" onclick="contactOwner('${booking.parking.owner_phone}')">
+                                    <i class="fas fa-phone"></i> Contact Owner
+                                </button>
+                            ` : ''}
+                            ${booking.status === 'completed' ? `
+                                <button class="btn-action btn-view">
+                                    <i class="fas fa-star"></i> Rate Experience
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            bookingsList.innerHTML = html;
+        }
+
+        function showEmptyState(status) {
+            const bookingsList = document.getElementById('bookingsList');
+            const messages = {
+                'all': { icon: 'calendar-alt', title: 'No bookings yet', text: 'Start by finding and booking a parking space' },
+                'pending': { icon: 'clock', title: 'No pending bookings', text: 'Your pending bookings will appear here' },
+                'confirmed': { icon: 'check-circle', title: 'No confirmed bookings', text: 'Your confirmed bookings will appear here' },
+                'active': { icon: 'car-side', title: 'No active bookings', text: 'Your active bookings will appear here' },
+                'completed': { icon: 'flag-checkered', title: 'No completed bookings', text: 'Your booking history will appear here' }
+            };
+
+            const msg = messages[status];
+            bookingsList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-${msg.icon}"></i>
+                    <h3>${msg.title}</h3>
+                    <p>${msg.text}</p>
+                    <br>
+                    <a href="/find-parking" class="btn-action btn-view">
+                        <i class="fas fa-search"></i> Find Parking
+                    </a>
+                </div>
+            `;
+        }
+
+        async function cancelBooking(bookingId) {
+            if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+            const token = localStorage.getItem('token');
+
+            try {
+                const response = await fetch(`/api/booking/${bookingId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Booking cancelled successfully');
+                    loadBookings(currentTab);
+                } else {
+                    const data = await response.json();
+                    alert(data.error || 'Failed to cancel booking');
+                }
+            } catch (error) {
+                console.error('Error cancelling booking:', error);
+                alert('Failed to cancel booking');
+            }
+        }
+
+        function contactOwner(phone) {
+            // Remove any non-digit characters from phone number
+            const cleanPhone = phone.replace(/\D/g, '');
+            // Open WhatsApp with the owner's number
+            window.open(`https://wa.me/${cleanPhone}`, '_blank');
+        }
+
+        function viewLocation(address) {
+            const searchQuery = encodeURIComponent(address);
+            window.open(`https://www.google.com/maps/search/?api=1&query=${searchQuery}`, '_blank');
+        }
+    </script>
+</body>
+</html>

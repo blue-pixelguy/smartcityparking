@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Parking - SmartParking</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .booking-container {
+            max-width: 800px;
+            margin: 100px auto 2rem;
+            padding: 0 2rem;
+        }
+
+        .booking-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+
+        .booking-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .booking-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .parking-info {
+            background: #f7fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .parking-info h3 {
+            margin-bottom: 1rem;
+            color: #2d3748;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #718096;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .form-group label i {
+            color: #667eea;
+            margin-right: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input[readonly] {
+            background-color: #f7fafc;
+            cursor: not-allowed;
+        }
+
+        .datetime-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .price-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .price-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .btn-cancel {
+            padding: 1rem;
+            background: #e2e8f0;
+            color: #2d3748;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-confirm {
+            padding: 1rem;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(72, 187, 120, 0.3);
+        }
+
+        .required {
+            color: #f56565;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-parking"></i>
+                <span>SmartParking</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a href="/find-parking" class="nav-link">
+                    <i class="fas fa-search"></i> Find Parking
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="booking-container">
+        <div class="booking-card">
+            <div class="booking-header">
+                <h1><i class="fas fa-calendar-check"></i> Book Parking Space</h1>
+                <p>Fill in your details to confirm your booking</p>
+            </div>
+
+            <!-- Parking Information -->
+            <div class="parking-info" id="parkingInfo">
+                <h3><i class="fas fa-info-circle"></i> Parking Details</h3>
+                
+                <!-- Parking Image -->
+                <div id="parkingImageContainer" style="display: none; margin-bottom: 1.5rem;">
+                    <img id="parkingImage" src="" alt="Parking Space" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Parking Space:</span>
+                    <span class="info-value" id="parkingTitle">Loading...</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Price per Hour:</span>
+                    <span class="info-value" id="parkingPrice">₹0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Address:</span>
+                    <span class="info-value" id="parkingAddress">Loading...</span>
+                </div>
+                <div class="info-row" id="availableFromRow" style="display: none;">
+                    <span class="info-label">Available From:</span>
+                    <span class="info-value" id="availableFromDisplay" style="color: #48bb78; font-weight: 600;">Loading...</span>
+                </div>
+                <div class="info-row" id="availableUntilRow" style="display: none;">
+                    <span class="info-label">Available Until:</span>
+                    <span class="info-value" id="availableUntilDisplay" style="color: #48bb78; font-weight: 600;">Loading...</span>
+                </div>
+                <div class="info-row" id="locationLinkRow" style="display: none;">
+                    <span class="info-label">Location:</span>
+                    <span class="info-value">
+                        <a href="#" id="locationLink" target="_blank" style="color: #667eea; text-decoration: none;">
+                            <i class="fas fa-map-marked-alt"></i> View on Google Maps
+                        </a>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Booking Form -->
+            <form id="bookingForm" onsubmit="submitBooking(event)">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Full Name <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="userName" required>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-phone"></i> Contact Number <span class="required">*</span></label>
+                    <input type="tel" class="form-input" id="userPhone" pattern="[0-9]{10}" maxlength="10" required placeholder="10-digit mobile number">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-car"></i> Vehicle Type <span class="required">*</span></label>
+                    <select class="form-input" id="vehicleType" required onchange="updateAvailableSpaces()">
+                        <option value="">Select vehicle type...</option>
+                        <option value="2-wheeler">2-Wheeler</option>
+                        <option value="4-wheeler">4-Wheeler</option>
+                        <option value="4+wheeler">More than 4 Wheeler</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-parking"></i> Number of Parking Spots <span class="required">*</span></label>
+                    <select class="form-input" id="numberOfSpots" required onchange="calculatePrice()">
+                        <option value="1">1 spot</option>
+                    </select>
+                    <small class="helper-text" id="spotsHelper">Select how many vehicles you want to park</small>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-id-card"></i> Vehicle Number <span class="required">*</span></label>
+                    <input type="text" class="form-input" id="vehicleNumber" required placeholder="e.g., MH02AB1234">
+                    <small class="helper-text">Enter primary vehicle number</small>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-calendar"></i> Booking Duration <span class="required">*</span></label>
+                    <div class="datetime-group">
+                        <div>
+                            <label style="font-weight: 400; font-size: 0.9rem;">Start Time:</label>
+                            <input type="datetime-local" class="form-input" id="startTime" required 
+                                   onchange="validateDateTime(); calculatePrice()" 
+                                   oninput="this.setCustomValidity('')">
+                        </div>
+                        <div>
+                            <label style="font-weight: 400; font-size: 0.9rem;">End Time:</label>
+                            <input type="datetime-local" class="form-input" id="endTime" required 
+                                   onchange="validateDateTime(); calculatePrice()" 
+                                   oninput="this.setCustomValidity('')">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Method Selection -->
+                <div class="form-group" id="paymentMethodSection" style="display: none;">
+                    <label><i class="fas fa-wallet"></i> Payment Method <span class="required">*</span></label>
+                    <select class="form-input" id="paymentMethod" required>
+                        <option value="">Select payment method...</option>
+                    </select>
+                    <div class="helper-text" id="paymentHelper"></div>
+                </div>
+
+                <!-- Price Summary -->
+                <div class="price-summary">
+                    <div class="price-row">
+                        <span>Duration:</span>
+                        <span id="durationHours">0 hours</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Price per Hour:</span>
+                        <span id="pricePerHourDisplay">₹0</span>
+                    </div>
+                    <div class="price-row" style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 0.75rem; margin-top: 0.5rem;">
+                        <span>Parking Amount (pay to owner):</span>
+                        <span id="parkingAmount" style="font-weight: 600;">₹0</span>
+                    </div>
+                    <div class="price-row" style="color: #f093fb;">
+                        <span>Platform Fee (1% - from wallet):</span>
+                        <span id="platformFee" style="font-weight: 600;">₹0</span>
+                    </div>
+                    <div class="price-row price-total" style="border-top: 2px solid rgba(255,255,255,0.3); padding-top: 0.75rem; margin-top: 0.5rem;">
+                        <span>Total Amount:</span>
+                        <span id="totalPrice">₹0</span>
+                    </div>
+                    <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 0.875rem;">
+                        <div style="margin-bottom: 0.5rem;"><strong>Payment Breakdown:</strong></div>
+                        <div>💳 <strong>From Wallet:</strong> <span id="walletDeduction">₹0</span> (Platform Fee)</div>
+                        <div>💰 <strong>To Owner:</strong> <span id="ownerPayment">₹0</span> (Cash/UPI at parking)</div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="btn-group">
+                    <button type="button" class="btn-cancel" onclick="window.history.back()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn-confirm">
+                        <i class="fas fa-check"></i> Confirm Booking
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let parkingData = null;
+        let pricePerHour = 0;
+
+        // Load parking details on page load
+        window.onload = async function() {
+            const parkingId = window.location.pathname.split('/').pop();
+            await loadParkingDetails(parkingId);
+            
+            // Pre-fill user details if available
+            const userName = localStorage.getItem('userName');
+            const userPhone = localStorage.getItem('userPhone');
+            if (userName) document.getElementById('userName').value = userName;
+            if (userPhone) document.getElementById('userPhone').value = userPhone;
+            
+            // Add event listeners to datetime inputs to calculate price
+            document.getElementById('startTime').addEventListener('change', calculatePrice);
+            document.getElementById('endTime').addEventListener('change', calculatePrice);
+            
+            // Add event listener for vehicle type change to recalculate price
+            document.getElementById('vehicleType').addEventListener('change', calculatePrice);
+        };
+
+        async function loadParkingDetails(parkingId) {
+            try {
+                console.log('Loading parking details for ID:', parkingId);
+                const token = localStorage.getItem('token');
+                
+                if (!token) {
+                    console.error('No authentication token found');
+                    alert('Please login first');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                const response = await fetch(`/api/parking/${parkingId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                console.log('API Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API Response data:', data);
+                    
+                    parkingData = data.parking;
+                    
+                    // Handle vehicle-specific pricing
+                    if (parkingData.pricing) {
+                        // New format with vehicle-specific pricing
+                        pricePerHour = parkingData.pricing[parkingData.vehicle_type] || parkingData.price_per_hour || 0;
+                    } else {
+                        // Old format - single price
+                        pricePerHour = parkingData.price_per_hour || 0;
+                    }
+
+                    console.log('Parking data loaded:', {
+                        parkingData: parkingData,
+                        vehicleType: parkingData.vehicle_type,
+                        pricing: parkingData.pricing,
+                        pricePerHour: pricePerHour
+                    });
+
+                    // Update UI
+                    document.getElementById('parkingTitle').textContent = parkingData.title;
+                    
+                    // Show pricing based on vehicle type
+                    if (parkingData.pricing) {
+                        const parkingVehicleType = parkingData.vehicle_type;
+                        const price = parkingData.pricing[parkingVehicleType];
+                        document.getElementById('parkingPrice').textContent = `₹${price}/hr (${parkingVehicleType})`;
+                        document.getElementById('pricePerHourDisplay').textContent = `₹${price}`;
+                    } else {
+                        document.getElementById('parkingPrice').textContent = `₹${pricePerHour}/hr`;
+                        document.getElementById('pricePerHourDisplay').textContent = `₹${pricePerHour}`;
+                    }
+                    
+                    document.getElementById('parkingAddress').textContent = parkingData.address;
+                    
+                    // Show parking image if available
+                    const parkingImage = document.getElementById('parkingImage');
+                    const imageContainer = document.getElementById('parkingImageContainer');
+                    
+                    // Placeholder image (parking icon)
+                    const placeholderImage = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"%3E%3Crect fill="%23667eea" width="400" height="300"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="80" fill="white"%3EP%3C/text%3E%3C/svg%3E';
+                    
+                    // DEBUG: Log all image-related data
+                    console.log('🖼️ IMAGE DEBUG:');
+                    console.log('parkingData.images:', parkingData.images);
+                    console.log('parkingData.image_url:', parkingData.image_url);
+                    console.log('parkingData full object:', parkingData);
+                    
+                    // Helper function to get absolute image URL
+                    const getAbsoluteImageUrl = (url) => {
+                        if (!url) return null;
+                        console.log('🔗 Converting URL:', url);
+                        // If already absolute, return as is
+                        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+                            console.log('✅ URL is absolute:', url);
+                            return url;
+                        }
+                        // If relative, make it absolute
+                        if (url.startsWith('/')) {
+                            const absoluteUrl = window.location.origin + url;
+                            console.log('✅ Made absolute from /:', absoluteUrl);
+                            return absoluteUrl;
+                        }
+                        // Otherwise prepend /static/uploads/
+                        const uploadUrl = window.location.origin + '/static/uploads/' + url;
+                        console.log('✅ Made upload URL:', uploadUrl);
+                        return uploadUrl;
+                    };
+                    
+                    // Check if image exists
+                    console.log('📋 Checking images array...');
+                    if (parkingData.images && parkingData.images.length > 0 && parkingData.images[0]) {
+                        console.log('✅ Found image in images array!');
+                        console.log('✅ Found image in images array!');
+                        const imageUrl = getAbsoluteImageUrl(parkingData.images[0]);
+                        console.log('🎯 Final image URL:', imageUrl);
+                        console.log('📸 Original URL:', parkingData.images[0]);
+                        parkingImage.src = imageUrl;
+                        imageContainer.style.display = 'block';
+                        
+                        // If image fails to load, show placeholder
+                        parkingImage.onerror = function() {
+                            console.error('❌ Image failed to load:', imageUrl);
+                            console.log('🔄 Showing placeholder instead');
+                            parkingImage.src = placeholderImage;
+                        };
+                        
+                        // Log when image loads successfully
+                        parkingImage.onload = function() {
+                            console.log('✅✅✅ Image loaded successfully!');
+                        };
+                    } else if (parkingData.image_url) {
+                        console.log('✅ Found image_url field!');
+                        const imageUrl = getAbsoluteImageUrl(parkingData.image_url);
+                        console.log('🎯 Final image URL:', imageUrl);
+                        console.log('📸 Original URL:', parkingData.image_url);
+                        parkingImage.src = imageUrl;
+                        imageContainer.style.display = 'block';
+                        
+                        // If image fails to load, show placeholder
+                        parkingImage.onerror = function() {
+                            console.error('❌ Image failed to load:', imageUrl);
+                            console.log('🔄 Showing placeholder instead');
+                            parkingImage.src = placeholderImage;
+                        };
+                        
+                        // Log when image loads successfully
+                        parkingImage.onload = function() {
+                            console.log('✅✅✅ Image loaded successfully!');
+                        };
+                    } else {
+                        // No image URL provided, show placeholder
+                        console.log('❌ NO IMAGE DATA FOUND!');
+                        console.log('⚠️ images array is empty or null');
+                        console.log('⚠️ image_url field is empty or null');
+                        console.log('🔄 Showing placeholder');
+                        parkingImage.src = placeholderImage;
+                        imageContainer.style.display = 'block';
+                    }
+                    
+                    // Show available time range (set by parking owner)
+                    if (parkingData.available_from && parkingData.available_to) {
+                        const availableFrom = new Date(parkingData.available_from);
+                        const availableTo = new Date(parkingData.available_to);
+                        
+                        // Format dates to readable format
+                        const formatDateTime = (date) => {
+                            const options = { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric', 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true 
+                            };
+                            return date.toLocaleString('en-IN', options);
+                        };
+                        
+                        // Display in TOP section
+                        document.getElementById('availableFromDisplay').textContent = formatDateTime(availableFrom);
+                        document.getElementById('availableUntilDisplay').textContent = formatDateTime(availableTo);
+                        document.getElementById('availableFromRow').style.display = 'flex';
+                        document.getElementById('availableUntilRow').style.display = 'flex';
+                        
+                        // Calculate TOTAL hours based on parking duration (available_from to available_to)
+                        // NOT from current time!
+                        const totalHoursAvailable = Math.ceil((availableTo - availableFrom) / (1000 * 60 * 60));
+                        
+                        // NO MINIMUM BOOKING - Removed 70% requirement
+                        
+                        // DON'T set min/max attributes - they cause HTML5 validation issues
+                        // Instead, we'll use custom JavaScript validation
+                        const startTimeInput = document.getElementById('startTime');
+                        const endTimeInput = document.getElementById('endTime');
+                        
+                        // Store the limits for custom validation
+                        window.parkingLimits = {
+                            availableFrom: availableFrom,
+                            availableTo: availableTo,
+                            now: new Date()
+                        };
+                        
+                        console.log('Parking time limits:', {
+                            availableFrom: availableFrom.toISOString(),
+                            availableTo: availableTo.toISOString(),
+                            now: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Show location link if available
+                    if (parkingData.location_link) {
+                        document.getElementById('locationLink').href = parkingData.location_link;
+                        document.getElementById('locationLinkRow').style.display = 'flex';
+                    }
+
+                    // Setup vehicle type dropdown based on parking's vehicle type
+                    const vehicleTypeSelect = document.getElementById('vehicleType');
+                    vehicleTypeSelect.innerHTML = '<option value="">Select vehicle type...</option>';
+                    
+                    // Add only the vehicle type that this parking supports
+                    const parkingVehicleType = parkingData.vehicle_type;
+                    const option = document.createElement('option');
+                    option.value = parkingVehicleType;
+                    
+                    // Show price in the option if available
+                    if (parkingData.pricing && parkingData.pricing[parkingVehicleType]) {
+                        option.textContent = `${parkingVehicleType} (₹${parkingData.pricing[parkingVehicleType]}/hr)`;
+                    } else {
+                        option.textContent = parkingVehicleType;
+                    }
+                    vehicleTypeSelect.appendChild(option);
+
+                    // Setup payment methods
+                    const paymentMethods = parkingData.payment_methods || ['cash'];
+                    const paymentMethodSelect = document.getElementById('paymentMethod');
+                    const paymentMethodSection = document.getElementById('paymentMethodSection');
+                    const paymentHelper = document.getElementById('paymentHelper');
+                    
+                    paymentMethods.forEach(method => {
+                        const option = document.createElement('option');
+                        option.value = method;
+                        if (method === 'cash') {
+                            option.textContent = 'Cash (Pay at parking)';
+                        } else if (method === 'upi') {
+                            option.textContent = 'UPI (Details after approval)';
+                        }
+                        paymentMethodSelect.appendChild(option);
+                    });
+
+                    if (paymentMethods.length > 0) {
+                        paymentMethodSection.style.display = 'block';
+                        paymentMethodSelect.value = paymentMethods[0];
+                        updatePaymentHelper(paymentMethods[0]);
+                    }
+
+                    // Add change listener for payment method
+                    paymentMethodSelect.addEventListener('change', function() {
+                        updatePaymentHelper(this.value);
+                    });
+                    
+                    // If dates are already set, recalculate price
+                    const startTime = document.getElementById('startTime').value;
+                    const endTime = document.getElementById('endTime').value;
+                    if (startTime && endTime) {
+                        calculatePrice();
+                    }
+                } else {
+                    // Try to get error message from response
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    console.error('API Error:', errorData);
+                    throw new Error(errorData.error || `Server returned ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Error loading parking details:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    parkingId: parkingId
+                });
+                alert('Failed to load parking details: ' + error.message + '\n\nPlease check:\n1. You are logged in\n2. The parking space exists\n3. The backend server is running');
+            }
+        }
+
+        function updatePaymentHelper(method) {
+            const paymentHelper = document.getElementById('paymentHelper');
+            if (method === 'cash') {
+                paymentHelper.textContent = 'Pay the owner in cash when you arrive at the parking spot';
+            } else if (method === 'upi') {
+                paymentHelper.textContent = 'UPI details will be shown after the owner accepts your booking';
+            }
+        }
+
+        function validateDateTime() {
+            if (!window.parkingLimits) return true;
+            
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+            const startValue = startTimeInput.value;
+            const endValue = endTimeInput.value;
+            
+            if (!startValue && !endValue) return true;
+            
+            const now = new Date();
+            const availableTo = window.parkingLimits.availableTo;
+            
+            // Validate start time
+            if (startValue) {
+                const startTime = new Date(startValue);
+                
+                // Start time must be in the future (from NOW)
+                if (startTime < now) {
+                    alert(`❌ Invalid start time!\n\nYou cannot book in the past.\n\nCurrent time: ${now.toLocaleString()}\n\nPlease select a future time.`);
+                    startTimeInput.value = '';
+                    startTimeInput.setCustomValidity('Start time must be in the future');
+                    return false;
+                }
+                
+                // Start time must be before parking expires
+                if (startTime > availableTo) {
+                    alert(`❌ Invalid start time!\n\nParking is only available until ${availableTo.toLocaleString()}.\n\nPlease select an earlier time.`);
+                    startTimeInput.value = '';
+                    startTimeInput.setCustomValidity(`Parking expires at ${availableTo.toLocaleString()}`);
+                    return false;
+                }
+                
+                startTimeInput.setCustomValidity('');
+            }
+            
+            // Validate end time
+            if (endValue) {
+                const endTime = new Date(endValue);
+                
+                // End time must be after start time
+                if (startValue && endTime <= new Date(startValue)) {
+                    endTimeInput.setCustomValidity('End time must be after start time');
+                    return false;
+                }
+                
+                // End time must be before parking expires
+                if (endTime > availableTo) {
+                    alert(`❌ Invalid end time!\n\nParking is only available until ${availableTo.toLocaleString()}.\n\nYou selected: ${endTime.toLocaleString()}\n\nPlease choose an earlier end time.`);
+                    endTimeInput.value = '';
+                    endTimeInput.setCustomValidity(`Parking expires at ${availableTo.toLocaleString()}`);
+                    return false;
+                }
+                
+                endTimeInput.setCustomValidity('');
+            }
+            
+            return true;
+        }
+
+        function updateAvailableSpaces() {
+            if (!parkingData) return;
+            
+            const numberOfSpotsSelect = document.getElementById('numberOfSpots');
+            const availableSpaces = parkingData.available_spaces || 1;
+            
+            // Clear existing options
+            numberOfSpotsSelect.innerHTML = '';
+            
+            // Add options up to available spaces
+            for (let i = 1; i <= availableSpaces; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i === 1 ? '1 spot' : `${i} spots`;
+                numberOfSpotsSelect.appendChild(option);
+            }
+            
+            // Update helper text
+            const helper = document.getElementById('spotsHelper');
+            helper.textContent = `${availableSpaces} spot${availableSpaces > 1 ? 's' : ''} available`;
+        }
+
+        function calculatePrice() {
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+            const vehicleTypeSelect = document.getElementById('vehicleType');
+            const numberOfSpotsSelect = document.getElementById('numberOfSpots');
+            const startTime = startTimeInput.value;
+            const endTime = endTimeInput.value;
+            const vehicleType = vehicleTypeSelect.value;
+            const numberOfSpots = parseInt(numberOfSpotsSelect.value) || 1;
+
+            // Only calculate if both times are set
+            if (!startTime || !endTime) {
+                // Reset display if either is empty
+                document.getElementById('durationHours').textContent = '0 hours';
+                document.getElementById('totalPrice').textContent = '₹0';
+                return;
+            }
+            
+            // Get price based on selected vehicle type
+            let currentPrice = pricePerHour;
+            if (parkingData && parkingData.pricing && vehicleType) {
+                currentPrice = parkingData.pricing[vehicleType] || pricePerHour;
+                console.log('Vehicle-specific pricing:', {
+                    vehicleType: vehicleType,
+                    price: currentPrice,
+                    allPricing: parkingData.pricing
+                });
+            }
+            
+            // Ensure price is set
+            if (!currentPrice || currentPrice === 0) {
+                console.error('Price per hour not loaded yet');
+                return;
+            }
+
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            
+            // Validate dates are valid
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                console.error('Invalid date format');
+                return;
+            }
+            
+            // Validate start time is not in the past and not before parking availability
+            if (parkingData && parkingData.available_from) {
+                const availableFrom = new Date(parkingData.available_from);
+                const now = new Date();
+                const minAllowedTime = now > availableFrom ? now : availableFrom;
+                
+                if (start < minAllowedTime) {
+                    const formatDateTime = (date) => {
+                        return date.toLocaleString('en-IN', { 
+                            year: 'numeric', month: 'short', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit', hour12: true 
+                        });
+                    };
+                    alert(`Start time must be ${formatDateTime(minAllowedTime)} or later.`);
+                    document.getElementById('startTime').value = '';
+                    return;
+                }
+            }
+            
+            if (end <= start) {
+                alert('End time must be after start time!');
+                endTimeInput.value = '';
+                document.getElementById('durationHours').textContent = '0 hours';
+                document.getElementById('totalPrice').textContent = '₹0';
+                return;
+            }
+
+            const durationMs = end - start;
+            // EXACT duration in hours (not rounded)
+            const durationHours = durationMs / (1000 * 60 * 60);
+            
+            // Check if duration exceeds 24 hours
+            const MAX_HOURS = 24;
+            if (durationHours > MAX_HOURS) {
+                alert(`Booking duration cannot exceed ${MAX_HOURS} hours! Please select a shorter time range.`);
+                endTimeInput.value = '';
+                document.getElementById('durationHours').textContent = '0 hours';
+                document.getElementById('parkingAmount').textContent = '₹0';
+                document.getElementById('platformFee').textContent = '₹0';
+                document.getElementById('totalPrice').textContent = '₹0';
+                document.getElementById('walletDeduction').textContent = '₹0';
+                document.getElementById('ownerPayment').textContent = '₹0';
+                return;
+            }
+            
+            console.log('Duration calculation:', {
+                start: start.toISOString(),
+                end: end.toISOString(),
+                durationMs: durationMs,
+                durationHours: durationHours,
+                pricePerHour: currentPrice,
+                vehicleType: vehicleType
+            });
+            
+            // NO MINIMUM BOOKING - Users can book any duration
+
+            const parkingAmount = Math.round(durationHours * currentPrice * numberOfSpots); // Rounded to whole number
+            const platformFee = Math.round(parkingAmount * 0.01); // 1% platform fee, rounded
+            const totalAmount = parkingAmount + platformFee; // Total = parking + platform fee
+
+            console.log('Final calculation:', {
+                durationHours: durationHours,
+                pricePerHour: currentPrice,
+                numberOfSpots: numberOfSpots,
+                parkingAmount: parkingAmount,
+                platformFee: platformFee,
+                totalAmount: totalAmount
+            });
+
+            // Update all price displays
+            // Show duration with 2 decimal places for clarity
+            document.getElementById('durationHours').textContent = `${durationHours.toFixed(2)} hours × ${numberOfSpots} spot${numberOfSpots > 1 ? 's' : ''}`;
+            document.getElementById('parkingAmount').textContent = `₹${parkingAmount}`;
+            document.getElementById('platformFee').textContent = `₹${platformFee}`;
+            document.getElementById('totalPrice').textContent = `₹${totalAmount}`;
+            
+            // Update payment breakdown
+            document.getElementById('walletDeduction').textContent = `₹${platformFee}`;
+            document.getElementById('ownerPayment').textContent = `₹${parkingAmount}`;
+        }
+
+        async function submitBooking(event) {
+            event.preventDefault();
+
+            // Validate datetime first
+            if (!validateDateTime()) {
+                return;
+            }
+
+            const userName = document.getElementById('userName').value;
+            const userPhone = document.getElementById('userPhone').value;
+            const vehicleType = document.getElementById('vehicleType').value;
+            const vehicleNumber = document.getElementById('vehicleNumber').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const numberOfSpots = parseInt(document.getElementById('numberOfSpots').value) || 1;
+
+            // Validate all required fields
+            if (!userName || !userPhone || !vehicleType || !vehicleNumber || !startTime || !endTime) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            if (!paymentMethod) {
+                alert('Please select a payment method');
+                return;
+            }
+            
+            // Validate phone number
+            if (userPhone.length !== 10 || !/^\d+$/.test(userPhone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+
+            // Save user details for next time
+            localStorage.setItem('userName', userName);
+            localStorage.setItem('userPhone', userPhone);
+
+            const parkingId = window.location.pathname.split('/').pop();
+            const token = localStorage.getItem('token');
+
+            console.log('Submitting booking with data:', {
+                parking_id: parkingId,
+                start_time: startTime,
+                end_time: endTime,
+                vehicle_type: vehicleType,
+                vehicle_number: vehicleNumber,
+                user_name: userName,
+                user_phone: userPhone,
+                payment_method: paymentMethod,
+                number_of_spots: numberOfSpots
+            });
+
+            try {
+                const response = await fetch('/api/booking/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        parking_id: parkingId,
+                        start_time: startTime,
+                        end_time: endTime,
+                        vehicle_type: vehicleType,
+                        vehicle_number: vehicleNumber,
+                        user_name: userName,
+                        user_phone: userPhone,
+                        payment_method: paymentMethod,
+                        number_of_spots: numberOfSpots
+                    })
+                });
+
+                console.log('Booking API response status:', response.status);
+                const data = await response.json();
+                console.log('Booking API response data:', data);
+
+                if (response.ok) {
+                    if (paymentMethod === 'upi') {
+                        alert('Booking request sent successfully! UPI details will be shown after owner accepts.');
+                    } else {
+                        alert('Booking request sent successfully! Pay in cash at the parking.');
+                    }
+                    window.location.href = '/my-bookings';
+                } else {
+                    console.error('Booking failed:', data);
+                    alert('Failed to create booking: ' + (data.error || 'Unknown error') + '\n\nDetails: ' + (data.details || 'None'));
+                }
+            } catch (error) {
+                console.error('Error creating booking:', error);
+                alert('Failed to create booking. Please check:\n1. You are logged in\n2. Backend server is running\n3. MongoDB is connected\n\nError: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
