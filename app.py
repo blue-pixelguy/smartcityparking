@@ -129,6 +129,8 @@ def create_app(config_class=Config):
         return jsonify({'error': 'Internal server error'}), 500
     
     return app
+# Create app instance for Gunicorn
+app = create_app()
 
 if __name__ == '__main__':
     app = create_app()
