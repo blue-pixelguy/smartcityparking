@@ -44,6 +44,42 @@ class User:
         return user_id
     
     @staticmethod
+    def create_google_user(db, firebase_uid, email, name, phone, profile_image=None):
+        """Create a new user from Google Sign-In"""
+        # Check if user already exists by email
+        existing_user = db.find_one('users', {'email': email.lower()})
+        if existing_user:
+            raise ValueError("User with this email already exists")
+        
+        user_data = {
+            'email': email.lower(),
+            'password_hash': None,  # Google users don't have passwords
+            'name': name,
+            'phone': phone,
+            'role': 'user',
+            'is_verified': True,  # Google accounts are pre-verified
+            'is_active': True,
+            'profile_image': profile_image,
+            'auth_provider': 'google',
+            'firebase_uid': firebase_uid,
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        user_id = db.insert_one('users', user_data)
+        
+        # Create wallet for the user
+        from models.wallet import Wallet
+        Wallet.create(db, user_id)
+        
+        return user_id
+    
+    @staticmethod
+    def get_by_firebase_uid(db, firebase_uid):
+        """Get user by Firebase UID"""
+        return db.find_one('users', {'firebase_uid': firebase_uid})
+    
+    @staticmethod
     def authenticate(db, email, password):
         """Authenticate user with email and password"""
         user = db.find_one('users', {'email': email.lower()})

@@ -509,50 +509,47 @@
                     
                     // Show available time range (set by parking owner)
                     if (parkingData.available_from && parkingData.available_to) {
-                        const availableFrom = new Date(parkingData.available_from);
-                        const availableTo = new Date(parkingData.available_to);
+                        // Parse dates WITHOUT timezone conversion
+                        // Backend sends: "2026-02-26T13:52:00" (IST)
+                        // We want to display: "26 Feb 2026, 01:52 PM" (same time, no conversion)
                         
-                        // Format dates to readable format
-                        const formatDateTime = (date) => {
-                            const options = { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric', 
-                                hour: '2-digit', 
-                                minute: '2-digit',
-                                hour12: true 
-                            };
-                            return date.toLocaleString('en-IN', options);
+                        const formatDateTimeIST = (isoString) => {
+                            // Remove timezone and parse as-is
+                            const dateStr = isoString.replace('T', ' ').substring(0, 19);
+                            const [datePart, timePart] = dateStr.split(' ');
+                            const [year, month, day] = datePart.split('-');
+                            const [hour, minute] = timePart.split(':');
+                            
+                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                            const monthName = monthNames[parseInt(month) - 1];
+                            
+                            // Convert 24hr to 12hr format
+                            let hr = parseInt(hour);
+                            const ampm = hr >= 12 ? 'PM' : 'AM';
+                            hr = hr % 12 || 12;
+                            
+                            return `${day} ${monthName} ${year}, ${hr.toString().padStart(2, '0')}:${minute} ${ampm} IST`;
                         };
                         
-                        // Display in TOP section
-                        document.getElementById('availableFromDisplay').textContent = formatDateTime(availableFrom);
-                        document.getElementById('availableUntilDisplay').textContent = formatDateTime(availableTo);
+                        // Display formatted times
+                        document.getElementById('availableFromDisplay').textContent = formatDateTimeIST(parkingData.available_from);
+                        document.getElementById('availableUntilDisplay').textContent = formatDateTimeIST(parkingData.available_to);
                         document.getElementById('availableFromRow').style.display = 'flex';
                         document.getElementById('availableUntilRow').style.display = 'flex';
                         
-                        // Calculate TOTAL hours based on parking duration (available_from to available_to)
-                        // NOT from current time!
-                        const totalHoursAvailable = Math.ceil((availableTo - availableFrom) / (1000 * 60 * 60));
+                        // Parse for calculations (keep as Date objects for math)
+                        const availableFrom = new Date(parkingData.available_from);
+                        const availableTo = new Date(parkingData.available_to);
                         
-                        // NO MINIMUM BOOKING - Removed 70% requirement
-                        
-                        // DON'T set min/max attributes - they cause HTML5 validation issues
-                        // Instead, we'll use custom JavaScript validation
-                        const startTimeInput = document.getElementById('startTime');
-                        const endTimeInput = document.getElementById('endTime');
-                        
-                        // Store the limits for custom validation
+                        // Store the limits for validation
                         window.parkingLimits = {
-                            availableFrom: availableFrom,
-                            availableTo: availableTo,
-                            now: new Date()
+                            availableFrom: parkingData.available_from,
+                            availableTo: parkingData.available_to
                         };
                         
-                        console.log('Parking time limits:', {
-                            availableFrom: availableFrom.toISOString(),
-                            availableTo: availableTo.toISOString(),
-                            now: new Date().toISOString()
+                        console.log('✅ Parking times (IST):', {
+                            from: formatDateTimeIST(parkingData.available_from),
+                            to: formatDateTimeIST(parkingData.available_to)
                         });
                     }
                     
@@ -646,6 +643,19 @@
             const startValue = startTimeInput.value;
             const endValue = endTimeInput.value;
             
+            
+            // Helper to format datetime without timezone conversion
+            const formatDateIST = (dateObj) => {
+                const year = dateObj.getFullYear();
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                let hour = dateObj.getHours();
+                const minute = String(dateObj.getMinutes()).padStart(2, '0');
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                hour = hour % 12 || 12;
+                return day + '/' + month + '/' + year + ' ' + hour + ':' + minute + ' ' + ampm + ' IST';
+            };
+
             if (!startValue && !endValue) return true;
             
             const now = new Date();
@@ -657,7 +667,7 @@
                 
                 // Start time must be in the future (from NOW)
                 if (startTime < now) {
-                    alert(`❌ Invalid start time!\n\nYou cannot book in the past.\n\nCurrent time: ${now.toLocaleString()}\n\nPlease select a future time.`);
+                    alert(`❌ Invalid start time!\n\nYou cannot book in the past.\n\nCurrent time: ${formatDateIST(now)}\n\nPlease select a future time.`);
                     startTimeInput.value = '';
                     startTimeInput.setCustomValidity('Start time must be in the future');
                     return false;
@@ -665,9 +675,9 @@
                 
                 // Start time must be before parking expires
                 if (startTime > availableTo) {
-                    alert(`❌ Invalid start time!\n\nParking is only available until ${availableTo.toLocaleString()}.\n\nPlease select an earlier time.`);
+                    alert(`❌ Invalid start time!\n\nParking is only available until ${formatDateIST(availableTo)}.\n\nPlease select an earlier time.`);
                     startTimeInput.value = '';
-                    startTimeInput.setCustomValidity(`Parking expires at ${availableTo.toLocaleString()}`);
+                    startTimeInput.setCustomValidity(`Parking expires at ${formatDateIST(availableTo)}`);
                     return false;
                 }
                 
@@ -686,9 +696,9 @@
                 
                 // End time must be before parking expires
                 if (endTime > availableTo) {
-                    alert(`❌ Invalid end time!\n\nParking is only available until ${availableTo.toLocaleString()}.\n\nYou selected: ${endTime.toLocaleString()}\n\nPlease choose an earlier end time.`);
+                    alert(`❌ Invalid end time!\n\nParking is only available until ${formatDateIST(availableTo)}.\n\nYou selected: ${formatDateIST(endTime)}\n\nPlease choose an earlier end time.`);
                     endTimeInput.value = '';
-                    endTimeInput.setCustomValidity(`Parking expires at ${availableTo.toLocaleString()}`);
+                    endTimeInput.setCustomValidity(`Parking expires at ${formatDateIST(availableTo)}`);
                     return false;
                 }
                 

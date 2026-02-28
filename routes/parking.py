@@ -8,7 +8,9 @@ from models.parking import ParkingSpace
 from models.user import User
 from models.review import Review
 from models.database import db as database
+from bson.objectid import ObjectId
 from werkzeug.utils import secure_filename
+from datetime import datetime
 import os
 import uuid
 
@@ -75,7 +77,7 @@ def create_parking():
 @parking_bp.route('/upload-image', methods=['POST'])
 @jwt_required()
 def upload_image():
-    """Upload parking space image"""
+    """Upload parking space image - stores as base64 in MongoDB"""
     try:
         user_id = get_jwt_identity()
         
@@ -90,23 +92,31 @@ def upload_image():
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif'}), 400
         
-        # Generate unique filename
-        filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4()}_{filename}"
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+        # Read file as bytes
+        file_bytes = file.read()
         
-        # Save file
-        file.save(filepath)
+        # Convert to base64
+        import base64
+        base64_image = base64.b64encode(file_bytes).decode('utf-8')
         
-        # Return file URL
-        file_url = f"/static/uploads/{unique_filename}"
+        # Get file extension
+        file_ext = file.filename.rsplit('.', 1)[1].lower()
+        
+        # Create data URL
+        mime_type = f"image/{file_ext}"
+        if file_ext == 'jpg':
+            mime_type = 'image/jpeg'
+        
+        image_data_url = f"data:{mime_type};base64,{base64_image}"
         
         return jsonify({
             'message': 'Image uploaded successfully',
-            'url': file_url
+            'url': image_data_url  # Returns data URL that works anywhere
         }), 200
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to upload image', 'details': str(e)}), 500
 
 @parking_bp.route('/search', methods=['GET'])
@@ -270,7 +280,23 @@ def get_my_listings():
         user_id = get_jwt_identity()
         status = request.args.get('status')
         
+        print(f"🔍 Getting listings for user_id: {user_id}")
+        print(f"📝 User_id type: {type(user_id)}")
+        print(f"🔑 Converting to ObjectId: {ObjectId(user_id)}")
+        
         parking_spaces = ParkingSpace.get_by_owner(database, user_id, status)
+        
+        print(f"✅ Found {len(parking_spaces)} parkings for user {user_id}")
+        
+        if len(parking_spaces) > 0:
+            print(f"📦 First parking owner_id: {parking_spaces[0].get('owner_id')}")
+        
+        # Also check ALL parkings to debug
+        all_parkings = database.find_many('parking_spaces', {})
+        print(f"🌐 Total parkings in DB: {len(all_parkings)}")
+        if len(all_parkings) > 0:
+            for p in all_parkings[-3:]:  # Show last 3
+                print(f"  - Parking {p.get('_id')}: owner_id={p.get('owner_id')}, title={p.get('title')}")
         
         return jsonify({
             'count': len(parking_spaces),
@@ -278,12 +304,15 @@ def get_my_listings():
         }), 200
         
     except Exception as e:
+        print(f"❌ Error in get_my_listings: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to get listings', 'details': str(e)}), 500
 
 @parking_bp.route('/<parking_id>', methods=['PUT'])
 @jwt_required()
 def update_parking(parking_id):
-    """Update parking space"""
+    """Update parking space - requires admin re-approval"""
     try:
         user_id = get_jwt_identity()
         
@@ -295,20 +324,98 @@ def update_parking(parking_id):
         if str(parking['owner_id']) != user_id:
             return jsonify({'error': 'You do not have permission to update this parking space'}), 403
         
+        # Check if there are any active bookings for this parking
+        active_bookings = database.find_many('bookings', {
+            'parking_id': ObjectId(parking_id),
+            'status': {'$in': ['pending', 'confirmed', 'active']}
+        })
+        
+        if len(active_bookings) > 0:
+            return jsonify({
+                'error': 'Cannot edit parking',
+                'message': f'This parking has {len(active_bookings)} active booking(s). You cannot edit while bookings are active.'
+            }), 400
+        
         data = request.get_json()
         
+        # CRITICAL: Parse datetime strings to datetime objects
+        # Without this, available_from/available_to get stored as strings in MongoDB,
+        # breaking the $gte datetime comparison in search queries (listings disappear from dashboard)
+        if 'available_from' in data and isinstance(data['available_from'], str):
+            dt_string = data['available_from'].replace('Z', '+00:00')
+            data['available_from'] = datetime.fromisoformat(dt_string)
+        if 'available_to' in data and isinstance(data['available_to'], str):
+            dt_string = data['available_to'].replace('Z', '+00:00')
+            data['available_to'] = datetime.fromisoformat(dt_string)
+        
+        print(f"🔧 Updating parking {parking_id}")
+        print(f"📝 Incoming data: {data}")
+        print(f"📊 Current parking status: {parking.get('status')}, is_available: {parking.get('is_available')}")
+        
+        # Preserve critical fields that shouldn't change
+        data.pop('_id', None)
+        data.pop('owner_id', None)
+        data.pop('rating', None)
+        data.pop('total_reviews', None)
+        data.pop('total_bookings', None)
+        data.pop('created_at', None)
+        
+        # CRITICAL: Mark as edited and send back to pending for admin approval
+        # Only if the parking was previously approved
+        was_approved = parking.get('status') == 'approved'
+        
+        if was_approved:
+            data['status'] = 'pending'  # Send back to admin for approval
+            data['is_edited'] = True  # Flag to indicate this is an edit, not new listing
+            data['previous_status'] = 'approved'  # Store previous status
+            data['edited_at'] = datetime.utcnow()  # Track when it was edited
+            print(f"⚠️ Parking was approved, sending back to pending for re-approval")
+        else:
+            # If already pending, just update and keep pending
+            data['status'] = parking.get('status', 'pending')
+            data['is_edited'] = parking.get('is_edited', False)
+        
+        # Preserve is_available and available_spaces (critical for showing on dashboard)
+        data['is_available'] = parking['is_available']
+        
+        # CRITICAL FIX: Preserve available_spaces if not explicitly being updated
+        if 'available_spaces' not in data and 'total_spaces' in data:
+            # If total_spaces is being updated, set available_spaces accordingly
+            # (assuming no bookings since we checked above)
+            data['available_spaces'] = int(data['total_spaces'])
+        elif 'available_spaces' not in data:
+            # Preserve existing available_spaces
+            data['available_spaces'] = parking['available_spaces']
+        
+        print(f"✅ Setting status: {data.get('status')}, is_edited: {data.get('is_edited')}")
+        
         # Update parking space
-        ParkingSpace.update(database, parking_id, data)
+        result = ParkingSpace.update(database, parking_id, data)
+        print(f"📦 Update result - matched: {result.matched_count}, modified: {result.modified_count}")
         
         # Get updated parking space
         updated_parking = ParkingSpace.get_by_id(database, parking_id)
+        print(f"🎉 Updated parking status: {updated_parking.get('status')}, is_edited: {updated_parking.get('is_edited')}")
+        
+        if not updated_parking:
+            return jsonify({'error': 'Failed to retrieve updated parking'}), 500
+        
+        # Different message based on whether it needs re-approval
+        if was_approved:
+            message = 'Parking space updated successfully. Waiting for admin approval to go live again.'
+        else:
+            message = 'Parking space updated successfully.'
         
         return jsonify({
-            'message': 'Parking space updated successfully',
+            'message': message,
+            'needs_approval': was_approved,
             'parking': ParkingSpace.to_dict(updated_parking)
         }), 200
         
     except Exception as e:
+        print(f"❌ Error updating parking: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to update parking space', 'details': str(e)}), 500
 
 @parking_bp.route('/<parking_id>', methods=['DELETE'])

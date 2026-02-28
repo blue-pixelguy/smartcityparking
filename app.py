@@ -77,8 +77,7 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"⚠️  Database initialization warning: {e}")
     
-    # Create upload folder if it doesn't exist
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    print("✅ Images stored as base64 in MongoDB (no local files needed)")
     
     # Register blueprints
     app.register_blueprint(web_bp)  # Web pages (no prefix)
@@ -129,8 +128,6 @@ def create_app(config_class=Config):
         return jsonify({'error': 'Internal server error'}), 500
     
     return app
-
-app = create_app()
 
 if __name__ == '__main__':
     app = create_app()

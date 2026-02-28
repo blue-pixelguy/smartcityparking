@@ -196,8 +196,21 @@ def add_money_crypto():
                 'order_id': order_id
             }), 200
         else:
-            logger.error(f"NowPayments error: {response.text}")
-            return jsonify({'error': 'Failed to create payment'}), 500
+            error_data = {}
+            try:
+                error_data = response.json()
+            except:
+                error_data = {'message': response.text}
+            
+            logger.error(f"❌ NowPayments error {response.status_code}: {error_data}")
+            
+            # Return detailed error to frontend
+            error_message = error_data.get('message', 'Failed to create payment')
+            return jsonify({
+                'error': error_message,
+                'status_code': response.status_code,
+                'details': error_data
+            }), 500
         
     except Exception as e:
         logger.error(f"Crypto error: {e}")

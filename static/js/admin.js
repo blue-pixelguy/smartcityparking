@@ -53,12 +53,15 @@ async function loadPendingParking() {
                 const exp = isExpired(p.available_to);
                 const from = new Date(p.available_from);
                 const to = new Date(p.available_to);
-                html += `<tr><td><strong>${p.title}</strong><br><small>${p.address}</small><br><span class="badge active">${p.vehicle_type}</span></td>
+                // Check if this is an edited listing
+                const isEdited = p.is_edited === true;
+                const editedBadge = isEdited ? '<span class="badge" style="background:#fbbf24;color:#78350f;margin-left:0.5rem"><i class="fas fa-edit"></i> EDITED</span>' : '';
+                html += `<tr><td><strong>${p.title}</strong>${editedBadge}<br><small>${p.address}</small><br><span class="badge active">${p.vehicle_type}</span></td>
                 <td><strong>${p.owner.name}</strong><br><small>${p.owner.email}</small><br><small>${p.owner.phone}</small></td>
                 <td>₹${p.price_per_hour}/hr<br><small>${from.toLocaleString()}</small><br><small>to ${to.toLocaleString()}</small>${exp ? '<div class="expiry-warning"><i class="fas fa-exclamation-triangle"></i> Expired</div>' : ''}</td>
-                <td><span class="badge ${exp ? 'expired' : 'pending'}">${exp ? 'Expired' : 'Pending'}</span><br><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
+                <td><span class="badge ${exp ? 'expired' : 'pending'}">${exp ? 'Expired' : 'Pending'}</span>${editedBadge}<br><small>${new Date(p.created_at).toLocaleDateString()}</small></td>
                 <td><div class="action-btns"><button class="btn btn-view" onclick="viewParkingDetails('${p.id}')"><i class="fas fa-eye"></i> View</button>
-                <button class="btn btn-approve" onclick="approveParking('${p.id}')" ${exp ? 'disabled style="opacity:0.5"' : ''}><i class="fas fa-check"></i> Approve</button>
+                <button class="btn btn-approve" onclick="approveParking('${p.id}')" ${exp ? 'disabled style="opacity:0.5"' : ''}><i class="fas fa-check"></i> Approve${isEdited ? ' Edit' : ''}</button>
                 <button class="btn btn-reject" onclick="rejectParking('${p.id}')"><i class="fas fa-times"></i> Reject</button></div></td></tr>`;
             });
             c.innerHTML = html + '</tbody></table>';

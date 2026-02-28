@@ -1,9 +1,17 @@
 """
-Parking Space Model
+Parking Space Model - ALL TIMES IN IST
 """
 
 from datetime import datetime
 from bson.objectid import ObjectId
+import pytz
+
+# IST timezone
+IST = pytz.timezone('Asia/Kolkata')
+
+def now_ist():
+    """Get current time in IST"""
+    return datetime.now(IST)
 
 class ParkingSpace:
     """Parking space model for managing parking listings"""
@@ -14,6 +22,9 @@ class ParkingSpace:
     @staticmethod
     def create(db, owner_id, data):
         """Create a new parking space listing"""
+        print(f"🏗️ Creating parking with owner_id: {owner_id}")
+        print(f"📝 Owner_id type: {type(owner_id)}")
+        
         # Parse datetime strings - handle both local and ISO formats
         def parse_datetime(dt_string):
             """Parse datetime from various formats"""
@@ -81,11 +92,16 @@ class ParkingSpace:
             'rating': 0.0,
             'total_reviews': 0,
             'total_bookings': 0,
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
+            'created_at': now_ist().replace(tzinfo=None),
+            'updated_at': now_ist().replace(tzinfo=None)
         }
         
-        return db.insert_one('parking_spaces', parking_data)
+        print(f"✅ Parking data prepared with owner_id: {parking_data['owner_id']}")
+        print(f"📦 Full parking_data keys: {list(parking_data.keys())}")
+        
+        result = db.insert_one('parking_spaces', parking_data)
+        print(f"🎉 Parking created with ID: {result}")
+        return result
     
     @staticmethod
     def get_by_id(db, parking_id):
@@ -180,18 +196,23 @@ class ParkingSpace:
     def update(db, parking_id, update_data):
         """Update parking space information"""
         # Remove fields that shouldn't be updated directly
-        update_data.pop('owner_id', None)
-        update_data.pop('rating', None)
-        update_data.pop('total_reviews', None)
-        update_data.pop('total_bookings', None)
+        fields_to_remove = ['_id', 'owner_id', 'rating', 'total_reviews', 'total_bookings', 'created_at']
+        for field in fields_to_remove:
+            update_data.pop(field, None)
         
-        update_data['updated_at'] = datetime.utcnow()
+        # Always update the updated_at timestamp
+        update_data['updated_at'] = now_ist().replace(tzinfo=None)
         
-        return db.update_one(
+        print(f"💾 Updating parking {parking_id} with fields: {list(update_data.keys())}")
+        
+        result = db.update_one(
             'parking_spaces',
             {'_id': ObjectId(parking_id)},
             {'$set': update_data}
         )
+        
+        print(f"✅ Update matched: {result.matched_count}, modified: {result.modified_count}")
+        return result
     
     @staticmethod
     def update_status(db, parking_id, status):
@@ -204,7 +225,7 @@ class ParkingSpace:
             {'_id': ObjectId(parking_id)},
             {'$set': {
                 'status': status,
-                'updated_at': datetime.utcnow()
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
     
@@ -225,7 +246,7 @@ class ParkingSpace:
             {'$set': {
                 'available_spaces': new_available,
                 'is_available': new_available > 0,
-                'updated_at': datetime.utcnow()
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
     
@@ -248,7 +269,7 @@ class ParkingSpace:
             {'$set': {
                 'rating': round(new_rating, 2),
                 'total_reviews': new_total_reviews,
-                'updated_at': datetime.utcnow()
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
     
@@ -286,8 +307,8 @@ class ParkingSpace:
             'vehicle_type': parking['vehicle_type'],
             'price_per_hour': parking['price_per_hour'],
             'total_hours': parking['total_hours'],
-            'available_from': parking['available_from'].isoformat(),
-            'available_to': parking['available_to'].isoformat(),
+            'available_from': parking['available_from'].isoformat() if hasattr(parking['available_from'], 'isoformat') else parking['available_from'],
+            'available_to': parking['available_to'].isoformat() if hasattr(parking['available_to'], 'isoformat') else parking['available_to'],
             'images': parking.get('images', []),
             'amenities': parking.get('amenities', []),
             'instructions': parking.get('instructions', ''),
@@ -299,8 +320,12 @@ class ParkingSpace:
             'rating': parking.get('rating', 0.0),
             'total_reviews': parking.get('total_reviews', 0),
             'total_bookings': parking.get('total_bookings', 0),
-            'created_at': parking['created_at'].isoformat(),
-            'updated_at': parking['updated_at'].isoformat()
+            'created_at': parking['created_at'].isoformat() if hasattr(parking['created_at'], 'isoformat') else parking['created_at'],
+            'updated_at': parking['updated_at'].isoformat() if hasattr(parking['updated_at'], 'isoformat') else parking['updated_at'],
+            # Edit tracking fields
+            'is_edited': parking.get('is_edited', False),
+            'edited_at': parking['edited_at'].isoformat() if parking.get('edited_at') and hasattr(parking['edited_at'], 'isoformat') else parking.get('edited_at'),
+            'previous_status': parking.get('previous_status')
         }
         
         # Only include UPI ID if specifically requested (for bookings/owner view)

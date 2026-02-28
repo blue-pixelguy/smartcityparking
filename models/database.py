@@ -108,11 +108,11 @@ class Database:
         return list(cursor)
     
     def update_one(self, collection_name, query, update, upsert=False):
-        """Update a single document"""
+        """Update a single document - returns UpdateResult object"""
         update.setdefault('$set', {})['updated_at'] = datetime.utcnow()
         result = self.db[collection_name].update_one(query, update, upsert=upsert)
-        # Return True if document was found (matched), even if no changes were made
-        return result.matched_count > 0
+        # Return the actual result object so callers can check matched_count, modified_count
+        return result
     
     def delete_one(self, collection_name, query):
         """Delete a single document"""

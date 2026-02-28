@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,11 +8,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <div class="auth-page">
         <div class="auth-card">
             <div class="auth-header">
-                <div style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem;">
+                <div
+                    style="font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 0.5rem;">
                     <i class="fas fa-parking"></i> SmartParking
                 </div>
                 <h2>Welcome Back</h2>
@@ -28,7 +31,8 @@
                     <label class="form-label">Email Address</label>
                     <div class="form-input-group">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com"
+                            required>
                     </div>
                 </div>
 
@@ -37,22 +41,62 @@
                     <label class="form-label">Password</label>
                     <div class="form-input-group">
                         <i class="fas fa-lock"></i>
-                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••"
+                            required>
                     </div>
                 </div>
 
                 <!-- Remember Me -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
                         <input type="checkbox" id="remember" style="cursor: pointer;">
                         <span>Remember me</span>
                     </label>
                 </div>
 
                 <!-- Submit Button -->
-                <button type="submit" class="btn btn-primary" id="submitBtn" style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <button type="submit" class="btn btn-primary" id="submitBtn"
+                    style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     <i class="fas fa-sign-in-alt"></i> Login
                 </button>
+
+                <!-- Google Login Divider -->
+                <div style="text-align: center; margin: 1.5rem 0; position: relative;" id="dividerBlock">
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0;">
+                    <span
+                        style="position: absolute; top: -0.8rem; left: 50%; transform: translateX(-50%); background: white; padding: 0 1rem; color: #a0aec0; font-size: 0.875rem;">OR</span>
+                </div>
+
+                <!-- Google Login Button -->
+                <button type="button" id="googleLoginBtn" class="btn"
+                    style="width: 100%; background: white; border: 1px solid #e2e8f0; color: #4a5568; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: 500; cursor: pointer;">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                        style="width: 18px; height: 18px;">
+                    Sign in with Google
+                </button>
+
+                <!-- Phone Number Modal / Section (Hidden initially) -->
+                <div id="phoneSection"
+                    style="display: none; margin-top: 1.5rem; padding: 1.5rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: #2d3748;"><i class="fas fa-mobile-alt"
+                            style="color: #667eea;"></i> Almost there!</h3>
+                    <p style="font-size: 0.875rem; color: #718096; margin-bottom: 1rem;">Please enter your mobile number
+                        to complete your profile.</p>
+
+                    <div style="margin-bottom: 1rem;">
+                        <label class="form-label">Mobile Number</label>
+                        <div class="form-input-group">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" class="form-control" id="googlePhone" placeholder="+1234567890">
+                        </div>
+                    </div>
+
+                    <button type="button" id="completeGoogleRegBtn" class="btn btn-primary"
+                        style="width: 100%; margin-top: 0.5rem; background: #48bb78; color: white;">
+                        Complete Registration <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
             </form>
 
             <!-- Link to Register -->
@@ -74,7 +118,7 @@
                 <span>${message}</span>
             `;
             alertMessage.style.display = 'flex';
-            
+
             setTimeout(() => {
                 alertMessage.style.display = 'none';
             }, 5000);
@@ -105,11 +149,11 @@
 
                 if (response.ok) {
                     showAlert('Login successful! Redirecting...', 'success');
-                    
+
                     // Store token
                     localStorage.setItem('token', data.access_token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    
+
                     // Redirect based on role
                     setTimeout(() => {
                         if (data.user.role === 'admin') {
@@ -131,5 +175,142 @@
             }
         });
     </script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, getIdToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCQomzP-fVEZOfTlmUcXQPmzjWXWG_aDwU",
+            authDomain: "smartpark-p2p.firebaseapp.com",
+            projectId: "smartpark-p2p",
+            storageBucket: "smartpark-p2p.firebasestorage.app",
+            messagingSenderId: "905017047853",
+            appId: "1:905017047853:web:9a4a0601f7f5046a57f1a4"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let tempGoogleUser = null;
+
+        const googleBtn = document.getElementById('googleLoginBtn');
+        const phoneSection = document.getElementById('phoneSection');
+        const completeBtn = document.getElementById('completeGoogleRegBtn');
+
+        googleBtn.addEventListener('click', async () => {
+            try {
+                googleBtn.innerHTML = '<div class="spinner"></div> Connecting...';
+                googleBtn.disabled = true;
+
+                const result = await signInWithPopup(auth, provider);
+                const token = await getIdToken(result.user);
+
+                // Send to backend
+                const response = await fetch('/api/auth/google-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_token: token })
+                });
+
+                const data = await response.json();
+
+                // Re-use the existing alert function from non-module script
+                const alertMessage = document.getElementById('alertMessage');
+                const showAlertLocal = (message, type = 'error') => {
+                    alertMessage.className = `alert alert-${type}`;
+                    alertMessage.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <span>${message}</span>`;
+                    alertMessage.style.display = 'flex';
+                    setTimeout(() => alertMessage.style.display = 'none', 5000);
+                };
+
+                if (response.ok) {
+                    if (data.requires_phone) {
+                        // User needs to provide phone number
+                        googleBtn.style.display = 'none';
+                        document.getElementById('dividerBlock').style.display = 'none';
+                        document.getElementById('loginForm').querySelectorAll('.form-group, #submitBtn, #remember').forEach(el => el.style.display = 'none');
+                        phoneSection.style.display = 'block';
+                        tempGoogleUser = data.temp_user;
+                        showAlertLocal('Please provide your mobile number to continue', 'success');
+                    } else {
+                        // Login successful
+                        showAlertLocal('Google Login successful! Redirecting...', 'success');
+                        localStorage.setItem('token', data.access_token);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        setTimeout(() => window.location.href = data.user.role === 'admin' ? '/admin' : '/dashboard', 1500);
+                    }
+                } else {
+                    showAlertLocal(data.error || 'Google Login failed', 'error');
+                    googleBtn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 18px; height: 18px;"> Sign in with Google';
+                    googleBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error(error);
+                // Handle popup closure quietly
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    const alertMessage = document.getElementById('alertMessage');
+                    alertMessage.className = `alert alert-error`;
+                    alertMessage.innerHTML = `<i class="fas fa-exclamation-circle"></i> <span>Google Auth failed. Please try again.</span>`;
+                    alertMessage.style.display = 'flex';
+                    setTimeout(() => alertMessage.style.display = 'none', 5000);
+                }
+                googleBtn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 18px; height: 18px;"> Sign in with Google';
+                googleBtn.disabled = false;
+            }
+        });
+
+        completeBtn.addEventListener('click', async () => {
+            const phone = document.getElementById('googlePhone').value;
+
+            const alertMessage = document.getElementById('alertMessage');
+            const showAlertLocal = (message, type = 'error') => {
+                alertMessage.className = `alert alert-${type}`;
+                alertMessage.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> <span>${message}</span>`;
+                alertMessage.style.display = 'flex';
+                setTimeout(() => alertMessage.style.display = 'none', 5000);
+            };
+
+            if (!phone) {
+                showAlertLocal('Please enter a mobile number', 'error');
+                return;
+            }
+
+            completeBtn.disabled = true;
+            completeBtn.innerHTML = '<div class="spinner"></div> Completing...';
+
+            try {
+                const response = await fetch('/api/auth/google-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...tempGoogleUser,
+                        phone: phone
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlertLocal('Account created! Redirecting...', 'success');
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    setTimeout(() => window.location.href = '/dashboard', 1500);
+                } else {
+                    showAlertLocal(data.error || 'Registration failed', 'error');
+                    completeBtn.disabled = false;
+                    completeBtn.innerHTML = 'Complete Registration <i class="fas fa-arrow-right"></i>';
+                }
+            } catch (error) {
+                console.error(error);
+                showAlertLocal('Network error', 'error');
+                completeBtn.disabled = false;
+                completeBtn.innerHTML = 'Complete Registration <i class="fas fa-arrow-right"></i>';
+            }
+        });
+    </script>
 </body>
+
 </html>

@@ -1,9 +1,40 @@
 """
-Booking Model
+Booking Model - ALL TIMES IN IST
 """
 
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
+import pytz
+
+# IST timezone
+IST = pytz.timezone('Asia/Kolkata')
+
+def now_ist():
+    """Get current time in IST"""
+    return datetime.now(IST)
+
+def parse_datetime_ist(dt_string):
+    """Parse datetime string and treat as IST"""
+    if not dt_string:
+        raise ValueError("DateTime string is required")
+    
+    # Remove 'Z' if present
+    dt_string = dt_string.replace('Z', '+00:00')
+    
+    # Parse datetime
+    if '+' in dt_string or '-' in dt_string[-6:]:
+        # Has timezone - convert to IST
+        dt = datetime.fromisoformat(dt_string)
+        if dt.tzinfo is None:
+            dt = IST.localize(dt)
+        else:
+            dt = dt.astimezone(IST)
+    else:
+        # No timezone - treat as IST
+        dt = datetime.fromisoformat(dt_string)
+        dt = IST.localize(dt)
+    
+    return dt
 
 class Booking:
     """Booking model for parking reservations"""
@@ -20,25 +51,11 @@ class Booking:
         if parking['status'] != 'approved' or not parking['is_available']:
             raise ValueError("Parking space is not available")
         
-        # Parse datetime strings - handle both local and ISO formats
-        def parse_datetime(dt_string):
-            """Parse datetime from various formats"""
-            if not dt_string:
-                raise ValueError("DateTime string is required")
-            
-            # Remove 'Z' if present and replace with +00:00
-            dt_string = dt_string.replace('Z', '+00:00')
-            
-            # If no timezone info, treat as local datetime
-            if '+' not in dt_string and '-' not in dt_string[-6:]:
-                return datetime.fromisoformat(dt_string)
-            else:
-                return datetime.fromisoformat(dt_string)
+        # Parse times in IST
+        start_time = parse_datetime_ist(data['start_time'])
+        end_time = parse_datetime_ist(data['end_time'])
         
-        start_time = parse_datetime(data['start_time'])
-        end_time = parse_datetime(data['end_time'])
-        
-        # Calculate duration in hours
+        # Calculate duration in hours using BOOKING times (not system time)
         duration = (end_time - start_time).total_seconds() / 3600
         
         # Get number of spots (default to 1)
@@ -48,17 +65,30 @@ class Booking:
         if number_of_spots > parking['available_spaces']:
             raise ValueError(f"Only {parking['available_spaces']} spot(s) available")
         
-        # NO MINIMUM BOOKING DURATION - Users can book any duration they want
-        
         # Check if parking is available for the requested time
-        # Start time must be in the future (from NOW)
-        current_time = datetime.utcnow()
-        if start_time < current_time:
-            raise ValueError("Booking start time cannot be in the past")
+        # IMPORTANT: Use parking's available_from (not current time) if booking starts after parking becomes available
+        current_time_ist = now_ist()
+        
+        # Ensure parking times are in IST
+        parking_available_from = parking['available_from']
+        if parking_available_from.tzinfo is None:
+            parking_available_from = IST.localize(parking_available_from)
+        else:
+            parking_available_from = parking_available_from.astimezone(IST)
+            
+        parking_available_to = parking['available_to']
+        if parking_available_to.tzinfo is None:
+            parking_available_to = IST.localize(parking_available_to)
+        else:
+            parking_available_to = parking_available_to.astimezone(IST)
+        
+        # Start time must be within parking's available window
+        if start_time < parking_available_from:
+            raise ValueError(f"Parking is only available from {parking_available_from.strftime('%Y-%m-%d %I:%M %p IST')}")
         
         # End time must be before parking expires
-        if end_time > parking['available_to']:
-            raise ValueError(f"Booking end time exceeds parking availability. Parking expires at {parking['available_to'].strftime('%Y-%m-%d %H:%M')}")
+        if end_time > parking_available_to:
+            raise ValueError(f"Booking end time exceeds parking availability. Parking expires at {parking_available_to.strftime('%Y-%m-%d %I:%M %p IST')}")
         
         # Calculate total price (per spot × number of spots)
         total_price = parking['price_per_hour'] * duration * number_of_spots
@@ -82,8 +112,8 @@ class Booking:
             'payment_status': 'pending',
             'payment_id': None,
             'is_confirmed_by_owner': False,
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
+            'created_at': now_ist().replace(tzinfo=None),
+            'updated_at': now_ist().replace(tzinfo=None)
         }
         
         booking_id = db.insert_one('bookings', booking_data)
@@ -154,7 +184,7 @@ class Booking:
             {'_id': ObjectId(booking_id)},
             {'$set': {
                 'status': status,
-                'updated_at': datetime.utcnow()
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
     
@@ -191,8 +221,8 @@ class Booking:
                     '$set': {
                         'is_confirmed_by_owner': True,
                         'status': 'confirmed',
-                        'confirmed_at': datetime.utcnow(),
-                        'updated_at': datetime.utcnow()
+                        'confirmed_at': now_ist().replace(tzinfo=None),
+                        'updated_at': now_ist().replace(tzinfo=None)
                     }
                 }
             )
@@ -222,7 +252,7 @@ class Booking:
         if booking['status'] != 'confirmed':
             raise ValueError("Booking must be confirmed by owner first")
         
-        now = datetime.utcnow()
+        now = now_ist().replace(tzinfo=None)
         
         # Check if booking should be active now
         is_active = booking['start_time'] <= now <= booking['end_time']
@@ -252,7 +282,7 @@ class Booking:
             {'$set': {
                 'payment_id': payment_id,
                 'payment_status': status,
-                'updated_at': datetime.utcnow()
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
     
@@ -273,8 +303,8 @@ class Booking:
             {'$set': {
                 'status': 'cancelled',
                 'cancelled_by': cancelled_by,
-                'cancelled_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow()
+                'cancelled_at': now_ist().replace(tzinfo=None),
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
         
@@ -310,8 +340,8 @@ class Booking:
             {'_id': ObjectId(booking_id)},
             {'$set': {
                 'status': 'completed',
-                'completed_at': datetime.utcnow(),
-                'updated_at': datetime.utcnow()
+                'completed_at': now_ist().replace(tzinfo=None),
+                'updated_at': now_ist().replace(tzinfo=None)
             }}
         )
         

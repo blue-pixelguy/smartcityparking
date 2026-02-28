@@ -10,6 +10,7 @@ from models.booking import Booking
 from models.database import db as database
 from bson.objectid import ObjectId
 from datetime import datetime
+from utils.timezone import now_ist, IST
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -45,7 +46,7 @@ def get_dashboard_stats():
         approved_parking_all = database.count_documents('parking_spaces', {'status': 'approved'})
         
         # Count only non-expired approved listings
-        now = datetime.utcnow()
+        now = now_ist().replace(tzinfo=None)
         active_approved = database.count_documents('parking_spaces', {
             'status': 'approved',
             'available_to': {'$gte': now}  # Only count if available_to is in the future
@@ -131,16 +132,35 @@ def get_pending_parking():
 @admin_bp.route('/parking/<parking_id>/approve', methods=['POST'])
 @admin_required
 def approve_parking(parking_id):
-    """Approve a parking space"""
+    """Approve a parking space (new or edited)"""
     try:
         parking = ParkingSpace.get_by_id(database, parking_id)
         if not parking:
             return jsonify({'error': 'Parking space not found'}), 404
         
-        ParkingSpace.update_status(database, parking_id, 'approved')
+        # Check if this is an edited listing or new one
+        is_edited = parking.get('is_edited', False)
+        
+        # CRITICAL FIX: When approving, ensure is_available is True
+        # This was the bug - edited listings weren't showing because is_available wasn't set
+        database.update_one(
+            'parking_spaces',
+            {'_id': ObjectId(parking_id)},
+            {'$set': {
+                'status': 'approved',
+                'is_available': True,  # CRITICAL: Set to True when approving
+                'is_edited': False,
+                'previous_status': None,
+                'updated_at': now_ist().replace(tzinfo=None)
+            }}
+        )
+        
+        action_type = "edited listing" if is_edited else "new listing"
+        print(f"✅ Admin approved {action_type}: {parking_id}, is_available set to True")
         
         return jsonify({
-            'message': 'Parking space approved successfully'
+            'message': f'Parking space ({action_type}) approved successfully',
+            'was_edited': is_edited
         }), 200
         
     except Exception as e:
@@ -164,7 +184,7 @@ def reject_parking(parking_id):
             database.update_one(
                 'parking_spaces',
                 {'_id': ObjectId(parking_id)},
-                {'$set': {'rejection_reason': data['reason'], 'rejected_at': datetime.utcnow()}}
+                {'$set': {'rejection_reason': data['reason'], 'rejected_at': now_ist().replace(tzinfo=None)}}
             )
         
         return jsonify({
@@ -445,7 +465,7 @@ def resolve_issue():
             'resolution': data['resolution'],
             'action': data['action'],
             'resolved_by': get_jwt_identity(),
-            'resolved_at': datetime.utcnow()
+            'resolved_at': now_ist().replace(tzinfo=None)
         }
         database.insert_one('issue_resolutions', resolution_data)
         

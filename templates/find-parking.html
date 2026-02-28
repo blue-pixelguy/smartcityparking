@@ -328,6 +328,17 @@
                     </div>
                 </div>
 
+                <div class="filter-section">
+                    <h3><i class="fas fa-sort"></i> Sort By</h3>
+                    <select id="sortSelect" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 600; cursor: pointer; font-size: 0.95rem;">
+                        <option value="default">Default</option>
+                        <option value="date_newest">📅 Newest First</option>
+                        <option value="date_oldest">📅 Oldest First</option>
+                        <option value="price_low">💰 Price: Low to High</option>
+                        <option value="price_high">💰 Price: High to Low</option>
+                    </select>
+                </div>
+
                 <button class="btn-search" onclick="searchParking()">
                     <i class="fas fa-search"></i> Search Parking
                 </button>
@@ -413,15 +424,37 @@
 
         function displayResults(parkingSpaces) {
             const resultsArea = document.getElementById('resultsArea');
+            const sortValue = document.getElementById('sortSelect').value;
+
+            // Sort spaces
+            let sorted = [...parkingSpaces];
+            if (sortValue === 'date_newest') {
+                sorted.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            } else if (sortValue === 'date_oldest') {
+                sorted.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            } else if (sortValue === 'price_low') {
+                sorted.sort((a, b) => (a.price_per_hour || 0) - (b.price_per_hour || 0));
+            } else if (sortValue === 'price_high') {
+                sorted.sort((a, b) => (b.price_per_hour || 0) - (a.price_per_hour || 0));
+            }
             
             let html = `<h2 style="margin-bottom: 1.5rem; color: #2d3748;">
-                <i class="fas fa-car-side"></i> Found ${parkingSpaces.length} parking spaces
+                <i class="fas fa-car-side"></i> Found ${sorted.length} parking spaces
             </h2>`;
 
-            parkingSpaces.forEach(parking => {
+            sorted.forEach(parking => {
+                const imageUrl = parking.images && parking.images[0] 
+                    ? (parking.images[0].startsWith('http') || parking.images[0].startsWith('/') 
+                        ? parking.images[0] 
+                        : '/static/uploads/' + parking.images[0])
+                    : '';
+                    
                 html += `
                     <div class="parking-card">
-                        <div class="parking-header">
+                        ${imageUrl ? `
+                            <div style="width:100%; height:180px; background-image:url('${imageUrl}'); background-size:cover; background-position:center; border-radius:12px 12px 0 0;"></div>
+                        ` : ''}
+                        <div class="parking-header" style="padding-top:${imageUrl ? '1rem' : '1.5rem'};">
                             <div>
                                 <div class="parking-title">${parking.title}</div>
                                 <div class="parking-address">
