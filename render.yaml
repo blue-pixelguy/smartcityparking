@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: smartcityparking
+    runtime: python
+    plan: free
+    buildCommand: bash build.sh
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --log-level info
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: DB_NAME
+        value: smartcityparking
+      - key: UPLOAD_FOLDER
+        value: uploads
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: False
